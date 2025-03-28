@@ -1,0 +1,135 @@
+
+        /* 차트 헤더 스타일 개선 */
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .chart-header select {
+            padding: 12px 30px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            background-color: #f8f9fa;
+            color: #333;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .chart-header select:hover {
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+
+        .chart-header select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+
+        /* 페이지 기본 레이아웃 */
+main.main-content {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+  
+  /* 박스 공통 스타일 */
+  .box-container {
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    padding: 1.5rem;
+  }
+  
+  /* 섹션 제목 */
+  .section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+  }
+  
+  /* 셀렉트 박스 */
+  .select-box {
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background-color: #f9fafb;
+    font-size: 0.875rem;
+    color: #111827;
+    transition: all 0.2s ease;
+  }
+  .select-box:hover {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96,165,250,0.3);
+  }
+  
+  /* 차트 영역 높이 */
+  .chart-area {
+    height: 400px;
+  }
+  
+  /* 테이블 */
+  .analysis-table {
+    width: 100%;
+    font-size: 0.875rem;
+    border-collapse: collapse;
+  }
+  .analysis-table th {
+    background-color: #f9fafb;
+    color: #6b7280;
+    font-weight: 500;
+    text-align: left;
+    padding: 0.75rem 1rem;
+  }
+  .analysis-table td {
+    padding: 0.75rem 1rem;
+    color: #374151;
+  }
+  .analysis-table tr:hover {
+    background-color: #f3f4f6;
+  }
+  .analysis-table td span {
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  
+  /* 상태 뱃지 */
+  .badge-red {
+    background-color: #fee2e2;
+    color: #b91c1c;
+  }
+  .badge-yellow {
+    background-color: #fef9c3;
+    color: #92400e;
+  }
+  
+  /* 페이지네이션 */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+  }
+  .pagination button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background-color: white;
+  }
+  .pagination button.active {
+    background-color: #2563eb;
+    color: white;
+    border-color: #2563eb;
+  }

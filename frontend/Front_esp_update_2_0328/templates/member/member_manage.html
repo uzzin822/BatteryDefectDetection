@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}전체 회원 관리{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/member_manage.css') }}">
+<script src="{{ url_for('static', filename='js/member_manage.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+  <h1 class="text-2xl font-bold text-gray-800 mb-8 text-center">전체 회원 관리</h1>
+
+  <!-- 관리자 목록 -->
+  <section class="section-box">
+    <h2 class="section-title">관리자 목록</h2>
+    <div class="table-wrapper">
+      <table class="manage-table">
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>ID</th>
+            <th>회원명</th>
+            <th>이메일</th>
+            <th>권한레벨</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for admin in admins %}
+          <tr>
+            <td>{{ total_admins - loop.index0 }}</td>
+            <td>{{ admin.userid }}</td>
+            <td>{{ admin.username }}</td>
+            <td>{{ admin.userEmail }}</td>
+            <td>
+              {% if admin.userLevel == 100 %} 관리자
+              {% elif admin.userLevel == 1000 %} 최고 관리자
+              {% endif %}
+            </td>
+            <td>
+              <button class="btn-refuse" onclick="confirmChange('{{ admin.username }}', '{{ admin.userid }}')">제외</button>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6">등록된 관리자 회원이 없습니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 승인 대기 회원 목록 -->
+  <section class="section-box">
+    <h2 class="section-title">승인 대기 회원 목록</h2>
+    <div class="table-wrapper">
+      <table class="manage-table">
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>ID</th>
+            <th>사번</th>
+            <th>회원명</th>
+            <th>이메일</th>
+            <th>가입일</th>
+            <th>상태</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for member in pending_members %}
+          <tr>
+            <td>{{ total_pending - loop.index0 }}</td>
+            <td>{{ member.userid }}</td>
+            <td>{{ member.emp_no }}</td>
+            <td>{{ member.username }}</td>
+            <td>{{ member.userEmail }}</td>
+            <td>{{ member.created_at or "2024-02-20" }}</td>
+            <td><span class="badge-red">미승인</span></td>
+            <td>
+              <button class="btn-approve" onclick="approveMember('{{ member.userid }}', '{{ member.username }}')">승인</button>
+              <button class="btn-refuse" onclick="refuseMember('{{ member.userid }}', '{{ member.username }}')">거절</button>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8">승인 대기중인 회원이 없습니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 전체 회원 목록 -->
+  <section class="section-box">
+    <h2 class="section-title">회원 목록</h2>
+
+    <!-- 필터 -->
+<div class="filter-group-horizontal">
+  <div>
+    <label class="form-label">회원 ID</label>
+    <input type="text" id="searchId" class="form-input" onkeyup="searchMembers()">
+  </div>
+  <div>
+    <label class="form-label">회원명</label>
+    <input type="text" id="searchName" class="form-input" onkeyup="searchMembers()">
+  </div>
+  <div>
+    <label class="form-label">사원번호</label>
+    <input type="text" id="searchEmpNo" class="form-input" onkeyup="searchMembers()">
+  </div>
+</div>
+
+    <!-- 테이블 -->
+    <div class="table-wrapper">
+      <table class="manage-table">
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>회원ID</th>
+            <th>사번</th>
+            <th>회원명</th>
+            <th>이메일</th>
+            <th>권한</th>
+            <th>가입날짜</th>
+            <th>상태</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody id="memberTableBody">
+          {% for member in all_members %}
+          <tr>
+            <td>{{ total_members - loop.index0 - member_start_idx }}</td>
+            <td>{{ member.userid }}</td>
+            <td>{{ member.emp_no }}</td>
+            <td>{{ member.username }}</td>
+            <td>{{ member.userEmail }}</td>
+            <td>
+              {% if member.userLevel == 0 %} 미승인
+              {% elif member.userLevel == 1 %} 일반회원
+              {% elif member.userLevel == 100 %} 관리자
+              {% elif member.userLevel == 1000 %} 최고 관리자
+              {% endif %}
+            </td>
+            <td>{{ member.created_at or "2025-03-14" }}</td>
+            <td>
+              {% if member.userLevel == 0 %}
+              <span class="badge-red">미승인</span>
+              {% else %}
+              <span class="badge-green">승인</span>
+              {% endif %}
+            </td>
+            <td>
+              <button onclick="location.href='/edit_member/{{ member.userid }}'" class="btn-manage">관리</button>
+              <button onclick="deleteMember('{{ member.userid }}')" class="btn-delete">삭제</button>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="9">등록된 회원이 없습니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Flash 메시지 처리 -->
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <script>alert("{{ messages[0] }}");</script>
+    {% endif %}
+  {% endwith %}
+</div>
+{% endblock %}

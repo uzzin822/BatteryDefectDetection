@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}불량 분석{% endblock %}
+
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"/>
+<link href="https://ai-public.creatie.ai/gen_page/tailwind-custom.css" rel="stylesheet"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/analysis.css') }}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<script src="https://cdn.tailwindcss.com/3.4.5?plugins=forms@0.5.7,typography@0.5.13,aspect-ratio@0.4.2,container-queries@0.1.1"></script>
+<script src="https://ai-public.creatie.ai/gen_page/tailwind-config.min.js" data-color="#000000" data-border-radius="small"></script>
+<script src="{{ url_for('static', filename='js/analysis.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <link href="https://ai-public.creatie.ai/gen_page/tailwind-custom.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.5?plugins=forms@0.5.7,typography@0.5.13,aspect-ratio@0.4.2,container-queries@0.1.1"></script>
+    <script src="https://ai-public.creatie.ai/gen_page/tailwind-config.min.js" data-color="#000000" data-border-radius="small"></script>
+</head>
+
+<main class="px-8 pt-16 pb-6">
+    <!-- 차트 컨테이너 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="chart-header">
+                <h3>생산라인별 불량률 및 정상률</h3>
+                <select id="lineChartPeriod">
+                    <option value="daily">일간</option>
+                    <option value="weekly">주간</option>
+                    <option value="monthly">월간</option>
+                </select>
+            </div>
+            <div id="lineChart" style="height: 400px;"></div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="chart-header">
+                <h3>불량률 및 정상률 추이</h3>
+                <select id="barChartPeriod">
+                    <option value="daily">일간</option>
+                    <option value="weekly">주간</option>
+                    <option value="monthly">월간</option>
+                </select>
+            </div>
+            <div id="barChart" style="height: 400px;"></div>
+        </div>
+    </div>
+
+    <!-- 불량 및 정상 로그 -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-medium text-gray-900">불량 및 정상 로그</h3>
+            <div class="flex items-center space-x-4">
+                <!-- 필터링 드롭다운 -->
+                <select id="statusFilter" class="border rounded px-4 py-1 text-sm min-w-[120px]">
+                    <option value="">상태: 전체</option>
+                    <option value="정상">정상</option>
+                    <option value="불량(주의)">불량(주의)</option>
+                    <option value="불량(심각)">불량(심각)</option>
+                </select>
+                <select id="lineFilter" class="border rounded px-4 py-1 text-sm min-w-[120px]">
+                    <option value="">라인: 전체</option>
+                    <option value="라인 A">라인 A</option>
+                    <option value="라인 B">라인 B</option>
+                    <option value="라인 C">라인 C</option>
+                </select>
+                <button id="exportCsv" class="px-3 py-1 bg-blue-600 text-white rounded text-sm">CSV 내보내기</button>
+                <div class="text-sm text-gray-700">총 <span id="totalItems" class="font-medium">97</span>개 항목 중 <span class="font-medium">1-10</span></div>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">날짜</th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">제품 번호</th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">생산라인</th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">점수</th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
+                    </tr>
+                </thead>
+                <tbody id="logTable" class="bg-white divide-y divide-gray-200">
+                    <!-- JavaScript로 동적 추가 -->
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4 flex items-center justify-between">
+            <div class="flex space-x-2 justify-center w-full mt-8">
+                <button id="prevPage" class="px-3 py-1 border rounded text-sm">이전</button>
+                <button class="px-3 py-1 bg-custom text-white rounded text-sm">1</button>
+                <button id="nextPage" class="px-3 py-1 border rounded text-sm">다음</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+// 생산라인별 불량률 및 정상률 차트
+const lineChart = echarts.init(document.getElementById('lineChart'));
+lineChart.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['불량률', '정상률'] },
+    xAxis: { type: 'category', data: ['라인 A', '라인 B', '라인 C'] },
+    yAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
+    series: [
+        {
+            name: '불량률',
+            type: 'bar',
+            data: [2.5, 1.9, 2.2],
+            itemStyle: { color: '#e74c3c', borderRadius: [10, 10, 0, 0] }
+        },
+        {
+            name: '정상률',
+            type: 'bar',
+            data: [97.5, 98.1, 97.8],
+            itemStyle: { color: '#2ecc71', borderRadius: [10, 10, 0, 0] }
+        }
+    ]
+});
+
+// 불량률 및 정상률 추이 차트
+const barChart = echarts.init(document.getElementById('barChart'));
+barChart.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['불량률', '정상률'] },
+    xAxis: { type: 'category', data: ['2/9', '2/10', '2/11', '2/12', '2/13', '2/14', '2/15'] },
+    yAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
+    series: [
+        {
+            name: '불량률',
+            type: 'bar',
+            data: [2.1, 2.4, 1.8, 2.8, 2.3, 2.9, 2.5],
+            barWidth: '40%',
+            itemStyle: { color: '#e74c3c', borderRadius: [10, 10, 0, 0] }
+        },
+        {
+            name: '정상률',
+            type: 'bar',
+            data: [97.9, 97.6, 98.2, 97.2, 97.7, 97.1, 97.5],
+            barWidth: '40%',
+            itemStyle: { color: '#2ecc71', borderRadius: [10, 10, 0, 0] }
+        }
+    ]
+});
+
+// 로그 테이블 동적 로드 및 필터링
+let currentPage = 1;
+const itemsPerPage = 10;
+
+function loadLogs() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const lineFilter = document.getElementById('lineFilter').value;
+    fetch(`/api/logs?page=${currentPage}&status=${statusFilter}&line=${lineFilter}`)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('logTable');
+            tbody.innerHTML = '';
+            data.logs.forEach(log => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 cursor-pointer';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.productId}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.line}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.score}점</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        ${log.status === '정상' ? 'bg-green-100 text-green-800' : 
+                          log.status === '불량(주의)' ? 'bg-yellow-100 text-yellow-800' : 
+                          'bg-red-100 text-red-800'}">
+                            ${log.status}
+                        </span>
+                    </td>
+                `;
+                row.onclick = () => window.location.href = `/detail-analysis?id=${log.id}`;
+                tbody.appendChild(row);
+            });
+
+            // 총 항목 수 업데이트
+            document.getElementById('totalItems').textContent = data.total;
+        });
+}
+
+// CSV 내보내기
+document.getElementById('exportCsv').addEventListener('click', () => {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const lineFilter = document.getElementById('lineFilter').value;
+    window.location.href = `/api/export_logs?status=${statusFilter}&line=${lineFilter}`;
+});
+
+// 필터 및 페이지네이션 이벤트
+document.getElementById('statusFilter').addEventListener('change', () => { currentPage = 1; loadLogs(); });
+document.getElementById('lineFilter').addEventListener('change', () => { currentPage = 1; loadLogs(); });
+document.getElementById('prevPage').addEventListener('click', () => { if (currentPage > 1) { currentPage--; loadLogs(); } });
+document.getElementById('nextPage').addEventListener('click', () => { currentPage++; loadLogs(); });
+
+// 초기 로드
+loadLogs();
+
+// 창 크기 조절 시 차트 리사이즈
+window.addEventListener('resize', () => {
+    lineChart.resize();
+    barChart.resize();
+});
+</script>
+{% endblock %}
