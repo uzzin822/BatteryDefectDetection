@@ -1,0 +1,103 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    
+    <!-- CSS 및 JavaScript 포함 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+    <!-- 헤더 -->
+    <header class="header height-70">
+        <div class="status-alert">
+            <div class="status-indicator"></div>
+            <span>연결상태 확인 필요</span>
+        </div>
+        <div class="header-center">스마트 팩토리 관리 시스템</div>
+        <div class="notification-panel">
+            <!-- 알림 아이콘 -->
+            <div class="notification-icon" onclick="toggleNotificationDropdown()" style="cursor: pointer; position: relative;">
+                🔔 <span id="unreadAnomalyCount" class="unread-count hidden">0</span>
+            </div>
+
+            <!-- 🔔 알림 드롭다운 -->
+            <div id="notificationDropdown" class="notification-dropdown hidden">
+                <div class="dropdown-header">
+                    <h4>📢 알림 목록</h4>
+                    <button class="clear-all-btn" onclick="clearAllNotifications()">🗑️ 전체 삭제</button>
+                </div>
+                <div id="notificationItems" class="notification-items"></div>
+                <button class="close-dropdown" onclick="toggleNotificationDropdown()">닫기</button>
+            </div>
+
+            <!-- 사용자명 및 로그인/로그아웃 버튼 -->
+            <a href="{{ url_for('userpage') }}" class="username-link">{{ session.username }}</a>
+            <a href="#" class="logout-btn hidden" onclick="logout()">로그아웃</a>
+        </div>
+    </header>
+
+    <!-- 이상 감지 알림 리스트 -->
+    <div id="anomalyAlertContainer" class="anomaly-alert-container"></div>
+
+  <!-- 네비게이션 메뉴 -->
+<nav class="sidebar height-70">
+  <ul class="nav-menu">
+    <li class="nav-item {% if request.endpoint == 'dashboard' %}open{% endif %}">
+      <a href="{{ url_for('dashboard') }}" class="color-white">대시보드</a>
+    </li>
+
+    <li class="nav-item {% if request.endpoint in ['analysis', 'status', 'detail_analysis', 'monitoring'] %}open{% endif %}">
+      <!-- "불량분석" 클릭 시 바로 analysis 페이지로 이동 -->
+      <a href="{{ url_for('analysis') }}" class="color-white">
+        불량분석 <i class="fas fa-chevron-down submenu-toggle"></i>
+      </a>
+      <ul class="submenu" {% if request.endpoint in ['status', 'detail_analysis', 'monitoring'] %}style="display: block;"{% endif %}>
+        <li><a href="{{ url_for('detail_analysis') }}" class="color-white">불량 상세분석</a></li>
+        <li><a href="{{ url_for('monitoring') }}" class="color-white">실시간 모니터링</a></li>
+      </ul>
+    </li>
+
+    <!-- 마이페이지는 항상 보임 -->
+    <li class="nav-item {% if request.endpoint == 'userpage' %}open{% endif %}">
+      <a href="{{ url_for('userpage') }}" class="color-white">마이페이지</a>
+    </li>
+
+    <!-- 회원 관리 메뉴 (관리자 전용) -->
+    {% if session.get('userLevel', 0)|int >= 100 %}
+    <li class="nav-item {% if request.endpoint in ['member_manage', 'edit_member', 'mypage'] %}open{% endif %}">
+      <a href="#" class="color-white">
+        회원 관리 <i class="fas fa-chevron-down submenu-toggle"></i>
+      </a>
+      <ul class="submenu" {% if request.endpoint in ['member_manage', 'edit_member', 'mypage'] %}style="display: block;"{% endif %}>
+        <li><a href="{{ url_for('member_manage') }}" class="color-white">전체 회원 관리</a></li>
+        <li><a href="{{ url_for('edit_member', userid=session.get('userid')) }}" class="color-white">회원페이지</a></li>
+      </ul>
+    </li>
+    {% endif %}
+
+    <li class="nav-item {% if request.endpoint == 'system_management' %}open{% endif %}">
+      <a href="{{ url_for('system_management') }}" class="color-white">시스템설정</a>
+    </li>
+    <li><a href="{{ url_for('test_upload') }}" class="color-white">실시간 테스트</a></li>
+  </ul>
+</nav>
+  
+
+    <!-- 메인 콘텐츠 영역 -->
+    <main class="main-content height-70">
+        {% block content %}{% endblock %}
+    </main>
+
+    
+
+</body>
+</html>

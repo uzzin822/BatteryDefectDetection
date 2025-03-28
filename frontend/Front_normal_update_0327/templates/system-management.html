@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}시스템 관리{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/system-management.css') }}">
+    <script src="{{ url_for('static', filename='js/system-management.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- 연결 상태 -->
+    <div class="status-container">
+        <div class="status-box">
+            <h3>📷 ESP32 기기연결 상태</h3>
+            <p class="status-good">연결 양호</p>
+        </div>
+    </div>
+
+    <!-- 탭 메뉴 -->
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('request')">점검 요청하기</div>
+        <div class="tab" onclick="showTab('history')">점검 요청 내역</div>
+    </div>
+
+    <!-- 점검 요청 폼 -->
+    <div id="request" class="tab-content">
+        <div class="form-section">
+            <h2>점검 분야</h2>
+        <div class="form-grid">
+            <div class="radio-item">
+                <input type="radio" id="check1" name="categoryIdx" value="1">
+                <label for="check1">CNN모델 성능 점검</label>
+            </div>
+            <div class="radio-item">
+                <input type="radio" id="check2" name="categoryIdx" value="2">
+                <label for="check2">ESP32 성능 점검</label>
+            </div>
+            <div class="radio-item">
+                <input type="radio" id="check3" name="categoryIdx" value="3">
+                <label for="check3">사이트 점검</label>
+            </div>
+            <div class="radio-item">
+                <input type="radio" id="check4" name="categoryIdx" value="4">
+                <label for="check4">기타 문의</label>
+            </div>
+        </div>
+
+
+            <h2>요청 정보</h2>
+            <div class="form-group">
+                <label>이름</label>
+                <input type="text" class="form-input" id="userName">
+            </div>
+
+            <div class="form-group">
+                <label>이메일</label>
+                <div class="email-group">
+                    <input type="text" class="form-input" id="emailId" placeholder="아이디">
+                    <span>@</span>
+                    <input type="text" class="form-input" id="emailDomain" placeholder="도메인">
+                    <select class="form-input" id="emailExt" style="width: 100px;">
+                        <option>.com</option>
+                        <option>.net</option>
+                        <option>.co.kr</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>제목</label>
+                <input type="text" class="form-input" id="subject">
+            </div>
+
+            <div class="form-group">
+                <label>내용</label>
+                <textarea class="form-input" rows="5" id="content"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>파일 첨부</label>
+                <div class="file-input-wrap">
+                    <label class="file-btn" for="file-upload">파일 선택</label>
+                    <input type="file" id="file-upload" style="display:none" onchange="showFileName()">
+                    <span id="fileName" class="file-name">선택된 파일 없음</span>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-cancel" type="button" onclick="resetForm()">취소</button>
+                <button class="btn btn-submit" type="button" onclick="submitRequest()">제출</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 요청 내역 -->
+    <div id="history" class="tab-content" style="display:none;">
+        <div class="form-section">
+            <h2>점검 요청 내역</h2>
+            <table class="request-table" id="requestHistoryTable">
+                <thead>
+                    <tr>
+                        <th>요청일자</th>
+                        <th>제목</th>
+                        <th>상태</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>2025-03-10</td>
+                        <td>CNN 모델 성능 개선 요청</td>
+                        <td><span class="status-bad">처리중</span></td>
+                    </tr>
+                    <tr>
+                        <td>2025-03-05</td>
+                        <td>ESP32 펌웨어 업데이트</td>
+                        <td><span class="status-good">완료</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
