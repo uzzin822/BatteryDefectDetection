@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}불량 상세분석{% endblock %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/detail-analysis.css') }}">
+<script src="{{ url_for('static', filename='js/detail-analysis.js') }}" defer></script>
+
+{% block content %}
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <link href="https://ai-public.creatie.ai/gen_page/tailwind-custom.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.5?plugins=forms@0.5.7,typography@0.5.13,aspect-ratio@0.4.2,container-queries@0.1.1"></script>
+    <script src="https://ai-public.creatie.ai/gen_page/tailwind-config.min.js" data-color="#000000" data-border-radius="small"></script>
+</head>
+
+<main>
+    <div class="bg-white shadow-sm rounded-lg p-6 w-full max-w-full">
+        <!-- 상단: 돌아가기 및 보고서 다운로드 -->
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center space-x-4">
+                <button class="text-gray-600 hover:text-custom" onclick="location.href='/analysis'">
+                    <i class="fas fa-arrow-left mr-2"></i>돌아가기
+                </button>
+            </div>
+            <div class="flex space-x-4">
+                <button class="text-custom hover:text-custom/80" onclick="downloadReport()">
+                    <i class="fas fa-download mr-2"></i>보고서 다운로드
+                </button>
+            </div>
+        </div>
+
+        <!-- 섹션 1: 불량 상세 정보 -->
+        <h1 class="text-2xl font-semibold mb-6">불량 분석 결과</h1>
+        <div class="text-gray-600 mb-6">AI 분석을 통해 검출된 제품의 불량 상세 정보입니다.</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- 불량 이미지 -->
+            <div class="bg-gray-100 p-4 rounded-lg shadow-sm relative">
+                <h3 class="text-lg font-medium mb-2">불량 제품</h3>
+                <img id="main-defect-image" src="https://picsum.photos/400/400?random=1" alt="불량 이미지" class="w-full h-[300px] object-cover rounded"/>
+            </div>
+            <!-- 요약 정보 -->
+            <div class="bg-white p-6 rounded-lg border shadow-sm">
+                <h2 class="text-lg font-medium mb-4">요약 정보</h2>
+                <div class="space-y-4" id="defect-details">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">날짜:</span>
+                        <span id="detail-date">2024-02-15 14:30:00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">생산 라인:</span>
+                        <span id="detail-line">라인 A</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">불량 점수:</span>
+                        <span id="detail-score">85/100</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">불량 정도:</span>
+                        <span id="detail-level" class="text-red-500">심각</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">불량 위치:</span>
+                        <span id="fault-location" class="text-gray-900">상단 좌측</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 섹션 2: 불량 이미지 목록 -->
+        <div class="mt-8 border-t pt-6">
+            <h2 class="text-xl font-semibold mb-4">불량 이미지 목록</h2>
+            <div class="grid grid-cols-4 gap-6 mb-6 border p-4 rounded-lg bg-gray-50 defect-grid" id="defect-images">
+                {% if images %}
+                    {% for img_url in images %}
+                    <div class="cursor-pointer hover:opacity-80 image-item" data-index="{{ loop.index0 }}"
+                         data-status="{{ '심각' if loop.index0 % 2 == 0 else '주의' }}"
+                         data-line="{{ ['A', 'B', 'C', 'D'][loop.index0 % 4] }}"
+                         data-score="{{ [85, 75, 92, 68, 78, 88, 72, 82][loop.index0 % 8] }}"
+                         data-image="{{ img_url }}">
+                        <img src="{{ img_url }}" alt="불량 이미지 {{ loop.index }}" class="w-full h-48 object-cover rounded-lg shadow-sm"/>
+                        <div class="info-box">
+                            <p class="text-sm text-gray-700">생산라인: 라인 {{ ['A', 'B', 'C', 'D'][loop.index0 % 4] }}</p>
+                            <p class="text-sm text-gray-700">점수: {{ [85, 75, 92, 68, 78, 88, 72, 82][loop.index0 % 8] }}</p>
+                            <p class="text-sm {{ 'text-red-500' if loop.index0 % 2 == 0 else 'text-yellow-500' }}">상태: {{ '심각' if loop.index0 % 2 == 0 else '주의' }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- 더미 데이터로 테스트 -->
+                    {% for i in range(8) %}
+                    <div class="cursor-pointer hover:opacity-80 image-item" data-index="{{ i }}"
+                         data-status="{{ '심각' if i % 2 == 0 else '주의' }}"
+                         data-line="{{ ['A', 'B', 'C', 'D'][i % 4] }}"
+                         data-score="{{ [85, 75, 92, 68, 78, 88, 72, 82][i % 8] }}"
+                         data-image="https://picsum.photos/400/400?random={{ i + 1 }}">
+                        <img src="https://picsum.photos/400/400?random={{ i + 1 }}" alt="불량 이미지 {{ i + 1 }}" class="w-full h-48 object-cover rounded-lg shadow-sm"/>
+                        <div class="info-box">
+                            <p class="text-sm text-gray-700">생산라인: 라인 {{ ['A', 'B', 'C', 'D'][i % 4] }}</p>
+                            <p class="text-sm text-gray-700">점수: {{ [85, 75, 92, 68, 78, 88, 72, 82][i % 8] }}</p>
+                            <p class="text-sm {{ 'text-red-500' if i % 2 == 0 else 'text-yellow-500' }}">상태: {{ '심각' if i % 2 == 0 else '주의' }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <div class="flex justify-center space-x-8 mt-8 mb-6">
+                <button id="prev-btn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"><i class="fas fa-chevron-left"></i> 이전</button>
+                <button id="next-btn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">다음 <i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <!-- 섹션 3: 금일 불량 및 정상 로그 -->
+        <div class="bg-white rounded-lg border shadow-sm p-4 mb-6">
+            <h3 class="text-lg font-medium mb-3">금일 불량 및 정상 로그</h3>
+            <div class="flex space-x-4 mb-6">
+                <button id="all-tab" class="px-6 py-2 rounded-lg text-gray-700 hover:bg-gray-100 border border-gray-300">전체</button>
+                <button id="normal-tab" class="px-6 py-2 rounded-lg text-gray-700 hover:bg-gray-100 border border-gray-300">정상</button>
+                <button id="defect-tab" class="px-6 py-2 rounded-lg text-gray-700 hover:bg-gray-100 border border-gray-300">불량</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시간</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">제품 번호</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">생산 라인</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">불량 위치</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-table" class="bg-white divide-y divide-gray-200">
+                        <tr class="log-item" data-status="불량">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">14:30:00</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#1024</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">라인 A</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">상단 좌측</td>
+                            <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">심각</span></td>
+                        </tr>
+                        <tr class="log-item" data-status="정상">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">14:29:55</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#1023</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">라인 B</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">-</td>
+                            <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">정상</span></td>
+                        </tr>
+                        <tr class="log-item" data-status="불량">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">14:29:50</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#1022</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">라인 C</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">하단 우측</td>
+                            <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">주의</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 섹션 4: CAPA 관리 -->
+        <div class="bg-white rounded-lg border shadow-sm p-4 mb-6">
+            <h3 class="text-lg font-medium mb-3">CAPA 관리</h3>
+            <form class="space-y-4" id="capa-form">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <select name="capa-type" class="rounded-md border-gray-300">
+                        <option>시정</option>
+                        <option>예방</option>
+                    </select>
+                    <input type="date" name="capa-date" class="rounded-md border-gray-300"/>
+                </div>
+                <div>
+                    <textarea name="capa-action" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" rows="4" placeholder="조치 내용을 입력하세요"></textarea>
+                </div>
+                <div class="mt-3">
+                    <input type="text" name="capa-manager" class="block w-full rounded-md border-gray-300 bg-gray-100" placeholder="담당자명" disabled="true" value="김관리자"/>
+                </div>
+                <div class="mt-3">
+                    <button type="submit" class="w-full bg-black text-white rounded-md hover:bg-gray-800 py-2 mt-4">제출</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 섹션 5: 법적 참고사항 -->
+        <div class="bg-gray-50 p-4 rounded-lg">
+            <h3 class="text-lg font-medium mb-3">법적 참고사항</h3>
+            <ul class="space-y-2 text-gray-600">
+                <li>• 결함 보고: 24시간 이내 품질관리자 보고 의무</li>
+                <li>• 문서 보관: 5년간 기록 보관 (ISO 9001)</li>
+                <li>• 리콜 기준: 심각도 '상' 시 즉시 검토 (KC 인증)</li>
+            </ul>
+        </div>
+    </div>
+</main>
+
+<script>
+// 보고서 다운로드 (JSPDF 사용)
+function downloadReport() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text("불량 분석 보고서", 10, 10);
+    doc.text(`날짜: ${document.getElementById('detail-date').textContent}`, 10, 20);
+    doc.text(`생산 라인: ${document.getElementById('detail-line').textContent}`, 10, 30);
+    doc.text(`불량 점수: ${document.getElementById('detail-score').textContent}`, 10, 40);
+    doc.text(`불량 정도: ${document.getElementById('detail-level').textContent}`, 10, 50);
+    doc.text(`불량 위치: ${document.getElementById('fault-location').textContent}`, 10, 60);
+    doc.save("불량_분석_보고서.pdf");
+}
+
+// CAPA 폼 미리 채우기
+function prefillCapaForm() {
+    const form = document.getElementById('capa-form');
+    form.querySelector('input[name="capa-date"]').value = document.getElementById('detail-date').textContent.split(' ')[0];
+    form.querySelector('textarea[name="capa-action"]').value = `라인 ${document.getElementById('detail-line').textContent} 점검\n불량 점수: ${document.getElementById('detail-score').textContent}\n불량 위치: ${document.getElementById('fault-location').textContent}`;
+}
+
+// 이미지 클릭 이벤트
+document.addEventListener('DOMContentLoaded', function() {
+    const imageItems = document.querySelectorAll('.image-item');
+    imageItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const status = this.dataset.status;
+            const line = this.dataset.line;
+            const score = this.dataset.score;
+            const imageUrl = this.querySelector('img').src;
+
+            // 상단 불량 이미지 업데이트
+            document.getElementById('main-defect-image').src = imageUrl;
+            document.getElementById('detail-line').textContent = '라인 ' + line;
+            document.getElementById('detail-score').textContent = score + '/100';
+            document.getElementById('detail-level').textContent = status;
+        });
+    });
+
+    // 탭 메뉴 동작
+    const allTab = document.getElementById('all-tab');
+    const defectTab = document.getElementById('defect-tab');
+    const normalTab = document.getElementById('normal-tab');
+    const logItems = document.querySelectorAll('.log-item');
+
+    function handleTabClick(event, status) {
+        logItems.forEach(item => {
+            const itemStatus = item.dataset.status;
+            if (status === 'all' || 
+               (status === 'defect' && itemStatus !== '정상') || 
+               (status === 'normal' && itemStatus === '정상')) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // 탭 스타일 업데이트
+        [allTab, defectTab, normalTab].forEach(tab => {
+            tab.classList.remove('bg-blue-100', 'border-blue-500', 'text-blue-700');
+            tab.classList.add('text-gray-700', 'border-gray-300');
+        });
+        event.target.classList.remove('text-gray-700', 'border-gray-300');
+        event.target.classList.add('bg-blue-100', 'border-blue-500', 'text-blue-700');
+    }
+
+    allTab.addEventListener('click', (e) => handleTabClick(e, 'all'));
+    defectTab.addEventListener('click', (e) => handleTabClick(e, 'defect'));
+    normalTab.addEventListener('click', (e) => handleTabClick(e, 'normal'));
+
+    // 초기 상태 설정
+    handleTabClick({ target: allTab }, 'all');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,378 @@
+
+@import url('https://fonts.googleapis.com/css?family=Montserrat:400,800');
+
+* {
+  box-sizing: border-box;
+}
+
+/* 비활성화된 버튼 스타일 */
+.check-id-button:disabled {
+  background-color: #ccc;
+  /* 회색 배경 */
+  color: #666;
+  /* 회색 텍스트 */
+  cursor: not-allowed;
+  /* 커서 변경 */
+}
+
+body {
+  background: #f6f5f7;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  font-family: 'Montserrat', sans-serif;
+  height: 100vh;
+  margin: -20px 0 50px;
+}
+
+h1 {
+  font-weight: bold;
+  margin: 0;
+}
+
+h2 {
+  text-align: center;
+}
+
+p {
+  font-size: 14px;
+  font-weight: 100;
+  line-height: 20px;
+  letter-spacing: 0.5px;
+  margin: 20px 0 30px;
+}
+
+span {
+  font-size: 12px;
+}
+
+a {
+  color: #333;
+  font-size: 14px;
+  text-decoration: none;
+  margin: 15px 0;
+}
+
+
+
+/* 비밀번호 찾기 영역*/
+
+.button_area{
+  width: 100%;
+  margin-top: 10px;
+}
+
+
+.back {
+    border-radius: 20px;
+    border: 1px solid #238def;
+    background-color: #FFFFFF;
+    color: #238def;
+    font-size: 14px;
+    font-weight: bold; 
+    padding: 12px 15px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: transform 80ms ease-in;
+}
+
+/* 비밀번호 찾기 버튼*/
+.find_pass{
+    border-radius: 20px;
+    border: 1px solid #238def;
+    background-color: #238def;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 12px 15px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: transform 80ms ease-in;
+}
+
+.pass-phone-inputs {
+  display: flex;
+  justify-content: space-between; /* 균등하게 배치 */
+  width: 80%; /* 전체 너비에 맞춤 */
+  margin: 8px 0; /* 다른 입력 필드와의 간격 */
+}
+
+.pass-phone-inputs input {
+  flex: 1; /* 균등하게 나눔 */
+  padding: 11px 15px; 
+  margin: 0 1px;
+}
+
+/* 비밀번호 찾기 영역 끝 */
+
+button {
+  border-radius: 20px;
+  border: 1px solid #238def;
+  background-color: #238def;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 12px 45px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: transform 80ms ease-in;
+  margin-top: 10px;
+}
+
+button:active {
+  transform: scale(0.95);
+}
+
+button:focus {
+  outline: none;
+}
+
+button.ghost {
+  background-color: transparent;
+  border-color: #FFFFFF;
+}
+
+form {
+  background-color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 0 50px;
+  height: 100%;
+  text-align: center;
+}
+
+input {
+  background-color: #eee;
+  border: none;
+  padding: 12px 15px;
+  margin: 8px 0;
+  width: 100%;
+}
+
+.phone-inputs {
+  display: flex;
+  justify-content: space-between; /* 균등하게 배치 */
+  width: 100%; /* 전체 너비에 맞춤 */
+  margin: 8px 0; /* 다른 입력 필드와의 간격 */
+}
+
+.phone-inputs input {
+  flex: 1; /* 균등하게 나눔 */
+  padding: 11px 15px; 
+  margin: 0 1px;
+}
+
+
+/* ID 중복체크 버튼 스타일 */
+.check-id-button {
+  border-radius: 8px; 
+  border: 1px solid #238def;
+  background-color: #238def;
+  color: #FFFFFF;
+  font-size: 12px; 
+  padding: 6px 15px; 
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: background-color 0.3s ease;
+  cursor: pointer; 
+  margin-top: 0px; 
+  margin-left: 5px;
+}
+
+.check-id-button:hover {
+  background-color: #1a6bbf; /* 호버 효과 */
+}
+
+.check-id-message {
+  color: #ff0000; /* 에러 메시지 색상 */
+  font-size: 12px;
+  margin-top: 5px;
+  display: none; /* 초기에는 숨김 */
+}
+
+.container {
+  background-color: #fff;
+  border-radius: 10px;
+    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 
+      0 10px 10px rgba(0,0,0,0.22);
+  position: relative;
+  overflow: hidden;
+  width: 900px;
+  max-width: 100%;
+  min-height: 550px;
+}
+
+.form-container {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  transition: all 0.6s ease-in-out;
+}
+
+.pass-container {
+  position: absolute;
+  top: 50%; /* 수직 중앙 정렬 */
+  left: 50%; /* 수평 중앙 정렬 */
+  transform: translate(-50%, -50%); /* 요소 크기의 절반만큼 이동 */
+  height: auto; /* 높이를 자동으로 설정 */
+  width: 80%;
+  transition: all 0.6s ease-in-out;
+}
+
+.pass-container input{
+  width: 80%;
+}
+
+.sign-in-container {
+  left: 0;
+  width: 50%;
+  z-index: 2;
+}
+
+.container.right-panel-active .sign-in-container {
+  transform: translateX(100%);
+}
+
+.sign-up-container {
+  left: 0;
+  width: 50%;
+  opacity: 0;
+  z-index: 1;
+}
+
+.container.right-panel-active .sign-up-container {
+  transform: translateX(100%);
+  opacity: 1;
+  z-index: 5;
+  animation: show 0.6s;
+}
+
+@keyframes show {
+  0%, 49.99% {
+    opacity: 0;
+    z-index: 1;
+  }
+  
+  50%, 100% {
+    opacity: 1;
+    z-index: 5;
+  }
+}
+
+.overlay-container {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 100%;
+  overflow: hidden;
+  transition: transform 0.6s ease-in-out;
+  z-index: 100;
+}
+
+.container.right-panel-active .overlay-container{
+  transform: translateX(-100%);
+}
+
+.overlay {
+  background: #61adf3;
+  background: -webkit-linear-gradient(to right, #3245f5, #61adf3);
+  background: linear-gradient(to right, #3245f5, #61adf3);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: 0 0;
+  color: #FFFFFF;
+  position: relative;
+  left: -100%;
+  height: 100%;
+  width: 200%;
+    transform: translateX(0);
+  transition: transform 0.6s ease-in-out;
+}
+
+.container.right-panel-active .overlay {
+    transform: translateX(50%);
+}
+
+.overlay-panel {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 0 40px;
+  text-align: center;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  transform: translateX(0);
+  transition: transform 0.6s ease-in-out;
+}
+
+.overlay-left {
+  transform: translateX(-20%);
+}
+
+.container.right-panel-active .overlay-left {
+  transform: translateX(0);
+}
+
+.overlay-right {
+  right: 0;
+  transform: translateX(0);
+}
+
+.container.right-panel-active .overlay-right {
+  transform: translateX(20%);
+}
+
+.social-container {
+  margin: 20px 0;
+}
+
+.social-container a {
+  border: 1px solid #DDDDDD;
+  border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 5px;
+  height: 40px;
+  width: 40px;
+}
+
+footer {
+    background-color: #222;
+    color: #fff;
+    font-size: 14px;
+    bottom: 0;
+    position: fixed;
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 999;
+}
+
+footer p {
+    margin: 10px 0;
+}
+
+footer i {
+    color: red;
+}
+
+footer a {
+    color: #3c97bf;
+    text-decoration: none;
+}
+
+#lost_pass{
+  cursor: pointer;
+  text-decoration: underline;
+}
+#lost_pass:hover{
+  color: #61adf3;
+}

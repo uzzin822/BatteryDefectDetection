@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>로그인</title>
+    <link rel="stylesheet" href="/static/css/login.css">
+    <script src="/static/js/login.js"></script>
+</head>
+
+<body>
+    <div class="container" id="container">
+        <!-- 회원가입 영역 -->
+        <div class="form-container sign-up-container">
+            <form action="/join" method="post">
+                <h2>회원정보 입력</h2>
+                <input type="text" name="username" placeholder="이름" required />
+                <input type="text" name="emp_no" placeholder="사번" required />
+                <div class="phone-inputs">
+                    <input type="text" id="userid" name="userid" placeholder="아이디(3자리 이상)" required pattern=".{3,}" title="아이디는 3자리 이상이어야 합니다.">
+                    <button class="check-id-button" id="checkIdButton">ID 중복체크</button>
+                </div>
+                <div class="phone-inputs">
+                    <input type="text" name="email" placeholder="이메일" required />@
+                    <input type="text" id="domain" name="domain" placeholder="" required />
+                    <select class="form-input" id="domainSelect" style="margin-left: 5px;">
+                        <option>선택하세요</option>
+                        <option>naver.com</option>
+                        <option>gmail.com</option>
+                        <option>hanmail.net</option>
+                        <option>기타입력</option>
+                    </select>
+                </div>
+                <p class="check-id-message" id="checkIdMessage" style="display: none;"></p>
+                <div class="phone-inputs">
+                    <input type="text" maxlength="4" name="phone1" placeholder="010" value="010"
+                        onfocus="if(this.value === '010') this.value='';"
+                        onblur="if(this.value === '') this.value='010';">-
+                    <input type="text" name="phone2" maxlength="4" required />-
+                    <input type="text" name="phone3" maxlength="4" required />
+                </div>
+                <input type="password" name="password" placeholder="비밀번호(최소 4자리 이상)" required pattern=".{4,}" title="비밀번호는 4자리 이상이어야 합니다.">
+                <button>회원가입</button>
+            </form>
+        </div>
+
+        <!-- 로그인 영역 -->
+        <div class="form-container sign-in-container">
+            <form action="/login" method="post">
+                <h2>OO 자동차 공정 시스템</h2>
+                <input type="text" name="userid" placeholder="아이디" required />
+                <input type="password" name="password" placeholder="비밀번호" required />
+                <a href="/find_password" id="lost_pass">비밀번호를 잊어버리셨습니까?</a>
+                <button>로그인</button>
+            </form>
+        </div>
+
+        <!-- 안내문 -->
+        <div class="overlay-container">
+            <div class="overlay">
+                <div class="overlay-panel overlay-left">
+                    <h2>환영합니다!</h2>
+                    <p>회원가입 후 관리자의 승인에 따라 <br>홈페이지 이용이 가능합니다.</p>
+                    <button class="ghost" id="signIn">로그인</button>
+                </div>
+                <div class="overlay-panel overlay-right">
+                    <h2>회원이 아니십니까?</h2>
+                    <p>회원가입 후 관리자의 승인에 따라 <br>홈페이지 이용이 가능합니다.</p>
+                    <button class="ghost" id="signUp">회원가입</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+{% if alert_message %}
+<script type="text/javascript">
+    alert("{{ alert_message }}");
+</script>
+{% endif %}
+
+</html>
