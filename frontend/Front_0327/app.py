@@ -28,10 +28,14 @@ ph = PasswordHasher()
 
 # ======================== 모델 로드 ========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH_CNN = os.path.join(BASE_DIR, "static", "battery_cnn_model.h5")
+MODEL_PATH_CNN = os.path.join(BASE_DIR, "static", "model_final.h5")
 model_secondary = load_model(MODEL_PATH_CNN, compile=False)
 MODEL_PATH_UNET = os.path.join(BASE_DIR, "static", "fine_tuned_unet_mobilenet_alpha08.h5")
 model_unet = load_model(MODEL_PATH_UNET, compile=False)
+
+# 클래스 맵
+CLASS_MAP = {"Normal": 0, "Pollution": 1, "Damaged": 2}
+REVERSE_CLASS_MAP = {v: k for k, v in CLASS_MAP.items()}
 
 # =================== 마스크 시각화 함수 ===================
 def apply_unet_visualization(file):
@@ -70,13 +74,14 @@ def classify_cnn(file):
     file_unet = BytesIO(file_bytes)
 
     img = Image.open(file_cnn).convert('RGB')
-    img_resized = img.resize((224, 224))
+    img_resized = img.resize((128, 128))  # 모델 학습 크기와 동일
     img_array = np.array(img_resized) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
-    pred = model_secondary.predict(img_array)[0]
-    label_index = np.argmax(pred)
-    label = '정상' if label_index == 1 else '불량'
+    pred = model_secondary.predict(img_array)[0]  # [softmax 확률 벡터]
+    pred_class = np.argmax(pred)
+    class_name = REVERSE_CLASS_MAP[pred_class]
+    label = '정상' if class_name == 'Normal' else '불량'
 
     result = {
         'filename': file.filename,
@@ -102,9 +107,16 @@ def test_upload():
 # =================== 실시간 분석 API (CNN만 빠르게) ===================
 @app.route('/analyze-one', methods=['POST'])
 def analyze_one():
-    file = request.files['image']
-    result = classify_cnn(file)
-    return jsonify(result)
+    if 'image' not in request.files:
+        return jsonify({'error': '이미지가 업로드되지 않았습니다.'}), 400
+
+    try:
+        file = request.files['image']
+        result = classify_cnn(file)
+        return jsonify(result)
+    except Exception as e:
+        print(f"[analyze-one 오류] {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 # =================== 시각화 이미지 API (불량만 비동기) ===================
 @app.route('/get-visual', methods=['POST'])
@@ -112,6 +124,7 @@ def get_visual():
     file = request.files['image']
     overlay_base64, _ = apply_unet_visualization(file)
     return jsonify({'overlay': overlay_base64})
+
 
 # ======================== Flask 라우트들 ========================
 @app.route('/')

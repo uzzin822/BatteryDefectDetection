@@ -3,29 +3,29 @@
 
 {% block content %}
 <style>
-.defect-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-}
-.defect-grid > div {
-  position: relative;
-  width: 100%;
-  padding-top: 100%;
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-.defect-grid img {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-.defect-grid img:hover {
-  transform: scale(1.05);
-}
+  .defect-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+  }
+  .defect-grid > div {
+    position: relative;
+    width: 100%;
+    padding-top: 100%;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+  .defect-grid img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  .defect-grid img:hover {
+    transform: scale(1.05);
+  }
 </style>
 
 <div class="p-6">
@@ -56,7 +56,9 @@
     <div id="visualizationGrid" class="defect-grid"></div>
   </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     const button = document.getElementById('analyzeBtn');
@@ -84,44 +86,54 @@
       const formData = new FormData();
       formData.append('image', file);
 
-      // CNN 분석 요청
-      const res = await fetch('/analyze-one', {
-        method: 'POST',
-        body: formData
-      });
-      const result = await res.json();
+      try {
+        const res = await fetch('/analyze-one', {
+          method: 'POST',
+          body: formData
+        });
 
-      // 결과 테이블에 즉시 추가
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td class="border border-gray-300 px-4 py-2">${result.filename}</td>
-        <td class="border border-gray-300 px-4 py-2 ${result.label === '불량' ? 'text-red-600 font-bold' : 'text-green-600 font-semibold'}">
-          ${result.label}
-          ${result.score !== null ? `<div class="text-sm text-gray-700 mt-1">불량점수: ${result.score} / 100</div>` : ''}
-        </td>
-      `;
-      resultBody.appendChild(row);
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("❌ 분석 오류:", errorText);
+          continue;
+        }
 
-      // 불량일 때만 시각화
-      if (result.label === '불량') {
-        setTimeout(() => {
-          const visFormData = new FormData();
-          visFormData.append('image', file);
+        const result = await res.json();
 
-          fetch('/get-visual', {
-            method: 'POST',
-            body: visFormData
-          })
-          .then(r => r.json())
-          .then(data => {
-            const visBox = document.createElement('div');
-            const img = document.createElement('img');
-            img.src = `data:image/png;base64,${data.overlay}`;
-            img.alt = '불량 시각화';
-            visBox.appendChild(img);
-            visualGrid.appendChild(visBox);
-          });
-        }, 800 * i);
+        // 결과 테이블에 즉시 추가
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="border border-gray-300 px-4 py-2">${result.filename}</td>
+          <td class="border border-gray-300 px-4 py-2 ${result.label === '불량' ? 'text-red-600 font-bold' : 'text-green-600 font-semibold'}">
+            ${result.label}
+            ${result.score !== null ? `<div class="text-sm text-gray-700 mt-1">불량점수: ${result.score} / 100</div>` : ''}
+          </td>
+        `;
+        resultBody.appendChild(row);
+
+        // 불량일 때만 시각화
+        if (result.label === '불량') {
+          setTimeout(() => {
+            const visFormData = new FormData();
+            visFormData.append('image', file);
+
+            fetch('/get-visual', {
+              method: 'POST',
+              body: visFormData
+            })
+            .then(r => r.json())
+            .then(data => {
+              const visBox = document.createElement('div');
+              const img = document.createElement('img');
+              img.src = `data:image/png;base64,${data.overlay}`;
+              img.alt = '불량 시각화';
+              visBox.appendChild(img);
+              visualGrid.appendChild(visBox);
+            });
+          }, 800 * i);
+        }
+      } catch (err) {
+        console.error("❌ 네트워크 오류:", err);
       }
     }
   }
