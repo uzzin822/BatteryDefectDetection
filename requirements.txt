@@ -1,0 +1,67 @@
+# 가상환경 생성 및 설정 방법
+# 1. 가상환경 생성
+# python -m venv venv
+
+# 2. 가상환경 활성화
+# Windows:
+# venv\Scripts\activate
+
+# Linux/Mac:
+# source venv/bin/activate
+
+
+# 3. pip 업그레이드
+# python -m pip install --upgrade pip
+
+# 4. 필요한 패키지 설치
+# pip install -r requirements.txt
+
+# !!!작업 완료후!!!!!!! 5. 가상환경 비활성화 (작업 완료 후)
+# deactivate
+
+# 주의사항:
+# - 가상환경 폴더(venv)는 .gitignore에 추가하여 git에 업로드하지 않도록 설정
+# - 프로젝트 작업 시 항상 가상환경을 활성화한 상태에서 작업
+# - 새로운 패키지 설치 시 requirements.txt 업데이트 필요
+#   (pip freeze > requirements.txt)
+
+# Flask 및 웹 관련
+Flask==3.0.3
+Flask-SocketIO==5.3.6
+Werkzeug==3.0.3
+Jinja2==3.1.4
+itsdangerous==2.2.0
+click==8.1.7
+python-socketio==5.11.3
+python-engineio==4.9.1
+simple-websocket==1.0.0
+wsproto==1.2.0
+
+# 딥러닝 및 모델 관련
+tensorflow==2.15.0  # Python 3.10과 호환되며 안정적인 버전
+keras==2.15.0       # TensorFlow와 버전 일치
+ultralytics==8.2.0  # YOLO 모델용, 최신 안정 버전
+h5py==3.10.0        # HDF5 모델 파일 로드
+protobuf==4.25.3    # TensorFlow 의존성
+numpy==1.26.4       # 딥러닝 및 데이터 처리, Python 3.10 호환
+opencv-python==4.9.0.80  # 이미지 처리, Python 3.10 지원
+Pillow==10.3.0      # 이미지 처리, 최신 안정 버전
+
+# 데이터베이스 및 암호화
+mysql-connector-python==8.4.0  # MySQL 연결, 최신 버전
+argon2-cffi==23.1.0  # 비밀번호 해싱
+
+# 데이터 처리 및 시각화
+pandas==2.2.2
+matplotlib==3.8.4
+scipy==1.13.0
+
+# 기타 유틸리티
+requests==2.31.0
+python-dateutil==2.9.0.post0
+pytz==2024.1
+pyparsing==3.1.2
+packaging==24.0
+psutil==6.0.0
+PyYAML==6.0.1
+tqdm==4.66.4
