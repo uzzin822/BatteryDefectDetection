@@ -1,111 +1,58 @@
-# 가상환경 생성 및 설정 방법
-# 1. 가상환경 생성
-# python -m venv venv
+# ===== 가상환경 설정 안내 =====
+# 1. 가상환경 생성: python -m venv venv
+# 2. 가상환경 활성화: 
+#    - Windows: venv\Scripts\activate
+#    - Linux/Mac: source venv/bin/activate
+# 3. pip 업그레이드: python -m pip install --upgrade pip
+# 4. 패키지 설치: 아래 설치 순서 권장사항을 따르세요
+# 5. 가상환경 비활성화: deactivate (!작업 중에는 하지 마세요!그러면 작업을 못함~)
 
-# 2. 가상환경 활성화
-# Windows:
-# venv\Scripts\activate
-# Linux/Mac:
-# source venv/bin/activate
+# ===== 설치 순서 권장사항 =====
+# 의존성 문제 방지를 위해 아래 순서로 개별 설치를 권장합니다:
+# 1. pip install numpy==1.26.4
+# 2. pip install tensorflow==2.18.0 keras==3.8.0
+# 3. pip install ultralytics==8.2.86
+# 4. pip install mysql-connector-python==9.2.0 protobuf==5.29.3
+# 5. pip install -r requirements.txt
 
-# 3. pip 업그레이드
-# python -m pip install --upgrade pip
-
-# 4. 필요한 패키지 설치
-# pip install -r requirements.txt
-
-# 5. 가상환경 비활성화 (작업 완료 후)
-# deactivate
-
-# 주의사항:
-# - 가상환경 폴더(venv)는 .gitignore에 추가하여 git에 업로드하지 않도록 설정
-# - 프로젝트 작업 시 항상 가상환경을 활성화한 상태에서 작업
-# - 새로운 패키지 설치 시 requirements.txt 업데이트 필요
-#   (pip freeze > requirements.txt)
-
-
-absl-py==2.2.1
-argon2-cffi==23.1.0
-argon2-cffi-bindings==21.2.0
-asgiref==3.8.1
-astunparse==1.6.3
-bidict==0.23.1
-blinker==1.9.0
-certifi==2025.1.31
-cffi==1.17.1
-charset-normalizer==3.4.1
-click==8.1.8
-colorama==0.4.6
-contourpy==1.3.1
-cycler==0.12.1
-Django==5.1.7
-filelock==3.18.0
-Flask==3.1.0
-Flask-SocketIO==5.3.6
-flatbuffers==25.2.10
-fonttools==4.56.0
-fsspec==2025.3.0
-gast==0.6.0
-google-pasta==0.2.0
-grpcio==1.71.0
-h11==0.14.0
+# ===== 핵심 패키지 =====
+# 딥러닝 기반 라이브러리
+numpy==1.26.4
+tensorflow==2.18.0
+keras==3.8.0
 h5py==3.13.0
-idna==3.10
-image==1.5.33
-itsdangerous==2.2.0
-Jinja2==3.1.6
-keras==3.9.1
-kiwisolver==1.4.8
-libclang==18.1.1
-Markdown==3.7
-markdown-it-py==3.0.0
-MarkupSafe==3.0.2
-matplotlib==3.10.1
-mdurl==0.1.2
-ml_dtypes==0.5.1
-mpmath==1.3.0
-mysql-connector-python==9.2.0
-namex==0.0.8
-networkx==3.4.2
-numpy==2.1.1
-opencv-python==4.11.0.86
-opt_einsum==3.4.0
-optree==0.14.1
-packaging==24.2
-pandas==2.2.3
-pillow==11.1.0
-protobuf==5.29.4
-psutil==7.0.0
-py-cpuinfo==9.0.0
-pycparser==2.22
-Pygments==2.19.1
-pyparsing==3.2.3
-python-dateutil==2.9.0.post0
-python-engineio==4.11.2
-python-socketio==5.12.1
-pytz==2025.2
-PyYAML==6.0.2
-requests==2.32.3
-rich==13.9.4
-scipy==1.15.2
-seaborn==0.13.2
-simple-websocket==1.1.0
-six==1.17.0
-sqlparse==0.5.3
-sympy==1.13.1
-tensorboard==2.19.0
-tensorboard-data-server==0.7.2
-tensorflow==2.19.0
-tensorflow-io-gcs-filesystem==0.31.0
-termcolor==2.5.0
-torch==2.6.0
-torchvision==0.21.0
-tqdm==4.67.1
-typing_extensions==4.13.0
-tzdata==2025.2
-ultralytics==8.3.97
-ultralytics-thop==2.0.14
-urllib3==2.3.0
+ultralytics==8.2.86
+opencv-python==4.10.0.84
+Pillow==10.4.0
+
+# 웹 애플리케이션
+Flask==3.1.0
+Flask-SocketIO==5.3.5
 Werkzeug==3.1.3
-wrapt==1.17.2
-wsproto==1.2.0
+Jinja2==3.1.4
+itsdangerous==2.2.0
+python-socketio==5.9.0
+python-engineio==4.7.1
+simple-websocket==1.0.0
+
+# 데이터베이스
+mysql-connector-python==9.2.0
+
+# 데이터 처리 및 시각화
+pandas==2.2.2
+matplotlib==3.9.0
+scipy==1.14.1
+
+# 보안
+argon2-cffi==23.1.0
+
+# 유틸리티
+requests==2.32.3
+python-dateutil==2.8.2
+pytz==2023.3.post1
+pyparsing==3.1.1
+packaging==23.2
+psutil==6.0.0
+PyYAML==6.0.1
+tqdm==4.66.5
+protobuf==5.29.3
