@@ -11,9 +11,9 @@ class DBManager:
     def connect(self):
         try:
             self.connection = mysql.connector.connect(
-                host="10.0.66.5",
-                user="badpotato",
-                password="1234",
+                host="218.209.20.32",
+                user="obmfactory",
+                password="masterit1234!",
                 database="defect_detection"
             )
             self.cursor = self.connection.cursor(dictionary=True)
