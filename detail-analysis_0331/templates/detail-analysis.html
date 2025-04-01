@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block title %}불량 상세분석{% endblock %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/detail-analysis.css') }}">
+<script src="{{ url_for('static', filename='js/detail-analysis.js') }}" defer></script>
+
+{% block content %}
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <link href="https://ai-public.creatie.ai/gen_page/tailwind-custom.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.5?plugins=forms@0.5.7,typography@0.5.13,aspect-ratio@0.4.2,container-queries@0.1.1"></script>
+    <script src="https://ai-public.creatie.ai/gen_page/tailwind-config.min.js" data-color="#000000" data-border-radius="small"></script>
+</head>
+
+<main>
+    <div class="bg-white shadow-sm rounded-lg p-6 w-full max-w-full">
+        <!-- 상단: 돌아가기 및 보고서 다운로드 -->
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center space-x-4">
+                <button class="text-gray-600 hover:text-custom" onclick="location.href='/analysis'">
+                    <i class="fas fa-arrow-left mr-2"></i>돌아가기
+                </button>
+            </div>
+            <div class="flex space-x-4">
+                <button class="text-custom hover:text-custom/80" onclick="downloadReport()">
+                    <i class="fas fa-download mr-2"></i>보고서 다운로드
+                </button>
+            </div>
+        </div>
+
+        <!-- 섹션 1: 불량 상세 정보 -->
+        <h1 class="text-2xl font-semibold mb-6">불량 분석 결과</h1>
+        <div class="text-gray-600 mb-6">AI 분석을 통해 검출된 제품의 불량 상세 정보입니다.</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- 불량 이미지 -->
+            <div class="bg-gray-100 p-4 rounded-lg shadow-sm relative">
+                <h3 class="text-lg font-medium mb-2">불량 제품</h3>
+                <img id="main-defect-image" src="" alt="불량 이미지" class="w-full h-[400px] object-contain rounded"/>
+            </div>
+            <!-- 요약 정보 -->
+            <div class="bg-white p-6 rounded-lg border shadow-sm">
+                <h2 class="text-lg font-medium mb-4">요약 정보</h2>
+                <div class="space-y-4" id="defect-details">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">날짜:</span>
+                        <span id="detail-date">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">생산 라인:</span>
+                        <span id="detail-line">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">불량 점수:</span>
+                        <span id="detail-score">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">불량 정도:</span>
+                        <span id="detail-level" class="text-red-500">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 섹션 2: 불량 이미지 목록 -->
+        <div class="mt-8 border-t pt-6">
+            <h2 class="text-xl font-semibold mb-4">불량 이미지 목록</h2>
+            <div class="grid grid-cols-4 gap-6 mb-6 border p-4 rounded-lg bg-gray-50 defect-grid" id="defect-images">
+                <!-- JavaScript로 동적 추가 -->
+            </div>
+            <div class="flex justify-center space-x-8 mt-8 mb-6">
+                <button id="image-prev-btn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"><i class="fas fa-chevron-left"></i> 이전</button>
+                <button id="image-next-btn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">다음 <i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <!-- 섹션 3: 금일 불량 및 정상 로그 -->
+        <div class="bg-white rounded-lg border shadow-sm p-4 mb-6">
+            <h3 class="text-lg font-medium mb-3">금일 불량 및 정상 로그</h3>
+            <div class="flex space-x-4 mb-6">
+                <button id="all-tab" class="px-6 py-2 rounded-lg text-gray-700 hover:bg-gray-100 border border-gray-300">전체</button>
+                <button id="normal-tab" class="px-6 py-2 rounded-lg text-gray-700 hover:bg-gray-100 border border-gray-300">정상</button>
+                <button id="defect-tab" class="px-6 py-2 rounded-lg text-gray-700 hover:bg-gray-100 border border-gray-300">불량</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">날짜</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">제품 번호</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">생산 라인</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-table" class="bg-white divide-y divide-gray-200">
+                        <!-- JavaScript로 동적 추가 -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-center space-x-8 mt-8 mb-6">
+                <button id="log-prev-btn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"><i class="fas fa-chevron-left"></i> 이전</button>
+                <button id="log-next-btn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">다음 <i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <!-- 섹션 4: CAPA 관리 -->
+        <div class="bg-white rounded-lg border shadow-sm p-4 mb-6">
+            <h3 class="text-lg font-medium mb-3">CAPA 관리</h3>
+            <form class="space-y-4" id="capa-form">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <select name="capa-type" class="rounded-md border-gray-300">
+                        <option>시정</option>
+                        <option>예방</option>
+                    </select>
+                    <input type="date" name="capa-date" class="rounded-md border-gray-300"/>
+                </div>
+                <div>
+                    <textarea name="capa-action" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" rows="4" placeholder="조치 내용을 입력하세요"></textarea>
+                </div>
+                <div class="mt-3">
+                    <input type="text" name="capa-manager" class="block w-full rounded-md border-gray-300 bg-gray-100" placeholder="담당자명" disabled="true" value="김관리자"/>
+                </div>
+                <div class="mt-3">
+                    <button type="submit" class="w-full bg-black text-white rounded-md hover:bg-gray-800 py-2 mt-4">제출</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 섹션 5: 법적 참고사항 -->
+        <div class="bg-gray-50 p-4 rounded-lg">
+            <h3 class="text-lg font-medium mb-3">법적 참고사항</h3>
+            <ul class="space-y-2 text-gray-600">
+                <li>• 결함 보고: 24시간 이내 품질관리자 보고 의무</li>
+                <li>• 문서 보관: 5년간 기록 보관 (ISO 9001)</li>
+                <li>• 리콜 기준: 심각도 '상' 시 즉시 검토 (KC 인증)</li>
+            </ul>
+        </div>
+    </div>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 데이터 로드
+    fetch('/api/detail_data')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Fetched data:", data); // 데이터 확인용 로그
+            if (!data || data.length === 0) {
+                console.log("데이터가 없습니다.");
+                document.getElementById('defect-details').innerHTML = '<p>불량 데이터가 없습니다.</p>';
+                document.getElementById('log-table').innerHTML = '<tr><td colspan="4">불량 데이터가 없습니다.</td></tr>';
+                return;
+            }
+
+            // 페이지네이션 변수
+            const IMAGES_PER_PAGE = 12; // 3줄 (한 줄에 4개 이미지)
+            const LOGS_PER_PAGE = 10;
+            let imageCurrentPage = 1;
+            let logCurrentPage = 1;
+            let logData = data.map((item, index) => ({
+                ...item,
+                faultyIdx: item.faultyIdx || (index + 1) // faultyIdx가 없으면 인덱스로 설정
+            }));
+
+            // 첫 번째 데이터로 요약 정보 채우기
+            const firstItem = logData[0];
+            const formattedDate = new Date(firstItem.logDate).toLocaleString('ko-KR');
+            document.getElementById('detail-date').textContent = formattedDate;
+            document.getElementById('detail-line').textContent = `라인 ${firstItem.lineIdx}`;
+            document.getElementById('detail-score').textContent = `${firstItem.faultyScore}/100`;
+            document.getElementById('detail-level').textContent = firstItem.status;
+            document.getElementById('detail-level').className = firstItem.status === "불량(심각)" ? "text-red-500" : "text-yellow-500";
+            document.getElementById('main-defect-image').src = firstItem.faultyImage 
+                ? `data:image/jpeg;base64,${firstItem.faultyImage}` 
+                : 'https://via.placeholder.com/400x400?text=No+Image';
+
+            // 불량 이미지 목록 채우기 (페이지네이션 적용)
+            function populateDefectImages() {
+                const defectImages = document.getElementById('defect-images');
+                defectImages.innerHTML = '';
+                const start = (imageCurrentPage - 1) * IMAGES_PER_PAGE;
+                const end = start + IMAGES_PER_PAGE;
+                const paginatedData = logData.slice(start, end);
+
+                paginatedData.forEach((item, index) => {
+                    if (item.faultyImage) {
+                        const imageItem = document.createElement('div');
+                        imageItem.className = 'cursor-pointer hover:opacity-80 image-item';
+                        imageItem.dataset.index = start + index;
+                        imageItem.innerHTML = `
+                            <img src="data:image/jpeg;base64,${item.faultyImage}" alt="불량 이미지 ${item.faultyIdx}" class="w-full h-48 object-cover rounded-lg shadow-sm"/>
+                            <div class="info-box">
+                                <p class="text-sm text-gray-700">생산라인: 라인 ${item.lineIdx}</p>
+                                <p class="text-sm text-gray-700">점수: ${item.faultyScore}</p>
+                                <p class="text-sm ${item.status === '불량(심각)' ? 'text-red-500' : 'text-yellow-500'}">상태: ${item.status}</p>
+                            </div>
+                        `;
+                        imageItem.addEventListener('click', function() {
+                            document.getElementById('main-defect-image').src = `data:image/jpeg;base64,${item.faultyImage}`;
+                            document.getElementById('detail-date').textContent = new Date(item.logDate).toLocaleString('ko-KR');
+                            document.getElementById('detail-line').textContent = `라인 ${item.lineIdx}`;
+                            document.getElementById('detail-score').textContent = `${item.faultyScore}/100`;
+                            document.getElementById('detail-level').textContent = item.status;
+                            document.getElementById('detail-level').className = item.status === '불량(심각)' ? 'text-red-500' : 'text-yellow-500';
+                        });
+                        defectImages.appendChild(imageItem);
+                    }
+                });
+
+                updateImagePaginationButtons();
+            }
+
+            function updateImagePaginationButtons() {
+                const prevBtn = document.getElementById('image-prev-btn');
+                const nextBtn = document.getElementById('image-next-btn');
+                prevBtn.disabled = imageCurrentPage === 1;
+                nextBtn.disabled = imageCurrentPage * IMAGES_PER_PAGE >= logData.length;
+            }
+
+            function changeImagePage(delta) {
+                imageCurrentPage += delta;
+                if (imageCurrentPage < 1) imageCurrentPage = 1;
+                const maxPage = Math.ceil(logData.length / IMAGES_PER_PAGE);
+                if (imageCurrentPage > maxPage) imageCurrentPage = maxPage;
+                populateDefectImages();
+            }
+
+            // 금일 로그 채우기 (페이지네이션 적용)
+            function populateLogTable() {
+                const logTable = document.getElementById('log-table');
+                logTable.innerHTML = '';
+                const start = (logCurrentPage - 1) * LOGS_PER_PAGE;
+                const end = start + LOGS_PER_PAGE;
+                const paginatedData = logData.slice(start, end);
+
+                paginatedData.forEach(item => {
+                    const logRow = document.createElement('tr');
+                    logRow.className = 'log-item';
+
+                    let displayStatus = item.status;
+                    if (displayStatus.includes('불량사항')) {
+                        displayStatus = '불량(심각)';
+                    }
+
+                    logRow.dataset.status = displayStatus === '불량(심각)' || displayStatus === '불량(주의)' ? '불량' : '정상';
+
+                    let formattedLogDate = '-';
+                    try {
+                        const date = new Date(item.logDate);
+                        if (!isNaN(date.getTime())) {
+                            formattedLogDate = date.toLocaleString('ko-KR');
+                        } else {
+                            console.warn(`Invalid date format for logDate: ${item.logDate}`);
+                            formattedLogDate = item.logDate;
+                        }
+                    } catch (e) {
+                        console.error(`Error parsing date for logDate: ${item.logDate}`, e);
+                        formattedLogDate = item.logDate;
+                    }
+
+                    logRow.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formattedLogDate}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#${item.faultyIdx}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">라인 ${item.lineIdx}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            ${displayStatus === '불량(심각)' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">
+                                ${displayStatus}
+                            </span>
+                        </td>
+                    `;
+                    logTable.appendChild(logRow);
+                });
+
+                updateLogPaginationButtons();
+            }
+
+            function updateLogPaginationButtons() {
+                const prevBtn = document.getElementById('log-prev-btn');
+                const nextBtn = document.getElementById('log-next-btn');
+                prevBtn.disabled = logCurrentPage === 1;
+                nextBtn.disabled = logCurrentPage * LOGS_PER_PAGE >= logData.length;
+            }
+
+            function changeLogPage(delta) {
+                logCurrentPage += delta;
+                if (logCurrentPage < 1) logCurrentPage = 1;
+                const maxPage = Math.ceil(logData.length / LOGS_PER_PAGE);
+                if (logCurrentPage > maxPage) logCurrentPage = maxPage;
+                populateLogTable();
+            }
+
+            // 초기 로드
+            populateDefectImages();
+            populateLogTable();
+
+            prefillCapaForm();
+
+            // 탭 메뉴 동작
+            const allTab = document.getElementById('all-tab');
+            const defectTab = document.getElementById('defect-tab');
+            const normalTab = document.getElementById('normal-tab');
+
+            function handleTabClick(event, status) {
+                const logItems = document.querySelectorAll('.log-item');
+                logItems.forEach(item => {
+                    const itemStatus = item.dataset.status;
+                    if (status === 'all' || 
+                       (status === 'defect' && itemStatus !== '정상') || 
+                       (status === 'normal' && itemStatus === '정상')) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                [allTab, defectTab, normalTab].forEach(tab => {
+                    tab.classList.remove('bg-blue-100', 'border-blue-500', 'text-blue-700');
+                    tab.classList.add('text-gray-700', 'border-gray-300');
+                });
+                event.target.classList.remove('text-gray-700', 'border-gray-300');
+                event.target.classList.add('bg-blue-100', 'border-blue-500', 'text-blue-700');
+            }
+
+            allTab.addEventListener('click', (e) => handleTabClick(e, 'all'));
+            defectTab.addEventListener('click', (e) => handleTabClick(e, 'defect'));
+            normalTab.addEventListener('click', (e) => handleTabClick(e, 'normal'));
+
+            // 초기 상태 설정
+            handleTabClick({ target: allTab }, 'all');
+
+            // 페이지네이션 이벤트 리스너
+            document.getElementById('image-prev-btn').addEventListener('click', () => changeImagePage(-1));
+            document.getElementById('image-next-btn').addEventListener('click', () => changeImagePage(1));
+            document.getElementById('log-prev-btn').addEventListener('click', () => changeLogPage(-1));
+            document.getElementById('log-next-btn').addEventListener('click', () => changeLogPage(1));
+        })
+        .catch(error => {
+            console.error('데이터 로드 실패:', error);
+            document.getElementById('defect-details').innerHTML = '<p>데이터 로드에 실패했습니다.</p>';
+            document.getElementById('log-table').innerHTML = '<tr><td colspan="4">데이터 로드에 실패했습니다.</td></tr>';
+        });
+});
+
+// 보고서 다운로드 (JSPDF 사용)
+function downloadReport() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text("불량 분석 보고서", 10, 10);
+    doc.text(`날짜: ${document.getElementById('detail-date').textContent}`, 10, 20);
+    doc.text(`생산 라인: ${document.getElementById('detail-line').textContent}`, 10, 30);
+    doc.text(`불량 점수: ${document.getElementById('detail-score').textContent}`, 10, 40);
+    doc.text(`불량 정도: ${document.getElementById('detail-level').textContent}`, 10, 50);
+    doc.save("불량_분석_보고서.pdf");
+}
+
+// CAPA 폼 미리 채우기
+function prefillCapaForm() {
+    const form = document.getElementById('capa-form');
+    form.querySelector('input[name="capa-date"]').value = document.getElementById('detail-date').textContent.split(' ')[0];
+    form.querySelector('textarea[name="capa-action"]').value = `라인 ${document.getElementById('detail-line').textContent} 점검\n불량 점수: ${document.getElementById('detail-score').textContent}`;
+}
+</script>
+{% endblock %}

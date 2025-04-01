@@ -1,0 +1,87 @@
+<!-- templates/mypage.html -->
+{% extends "base.html" %}
+{% block title %}마이페이지{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mypage.css') }}">
+    <script src="{{ url_for('static', filename='js/mypage.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<form class="form-container" action="/update_member" method="post">
+    <div class="form-group">
+        <label class="form-label">사번</label>
+        <input type="text" class="form-input" name="emp_no" value="{{ mydata.emp_no }}" readonly>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">아이디</label>
+        <input type="text" class="form-input readonly" name="userid" value="{{ mydata.userid }}" readonly>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">이름</label>
+        <input type="text" class="form-input" name="username" value="{{ mydata.username }}">
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">이메일</label>
+        <div class="email-group">
+            {% set email_parts = mydata.userEmail.split('@') %}
+            <input type="text" class="form-input" name="email1" value="{{ email_parts[0] }}">
+            <span>@</span>
+            <input id="domain" type="text" class="form-input domainInput" name="email2" value="{{ email_parts[1] }}" readonly>
+            <select id="domainSelect" class="form-input domainSelect">
+                <option value="" disabled selected>선택하세요</option>
+                <option value="naver.com">naver.com</option>
+                <option value="gmail.com">gmail.com</option>
+                <option value="hanmail.net">hanmail.net</option>
+                <option value="기타 입력">기타 입력</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">전화번호</label>
+        <div class="phone-group">
+            {% set phone_parts = mydata.userPhone.split('-') %}
+            <input type="text" class="form-input" name="phone1" value="{{ phone_parts[0] }}" maxlength="3">
+            <span>-</span>
+            <input type="text" class="form-input" name="phone2" value="{{ phone_parts[1] }}" maxlength="4">
+            <span>-</span>
+            <input type="text" class="form-input" name="phone3" value="{{ phone_parts[2] }}" maxlength="4">
+        </div>
+    </div>
+
+    {% if session.get('userLevel', 0)|int >= 100 %}
+    <div class="form-group">
+        <label class="form-label">회원 레벨</label>
+        <select name="userLevel" class="form-input">
+            {% set user_levels = {0: '미승인 회원', 1: '일반회원', 100: '관리자회원', 1000: '최고 관리자'} %}
+            {% for level, label in user_levels.items() %}
+                <option value="{{ level }}" {% if level == mydata.userLevel %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+
+    <div class="form-group">
+        <label class="form-label">새 비밀번호</label>
+        <input type="password" class="form-input" name="password">
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">비밀번호 확인</label>
+        <input type="password" class="form-input" name="confirmPassword">
+    </div>
+
+    <div class="button-group">
+        <button type="button" class="btn btn-cancel" onclick="window.history.back()">취소</button>
+        <button type="submit" class="btn btn-save">저장</button>
+    </div>
+</form>
+
+{% if alert_message %}
+<script>alert("{{ alert_message }}");</script>
+{% endif %}
+{% endblock %}
