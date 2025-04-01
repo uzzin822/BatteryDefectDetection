@@ -1,4 +1,5 @@
 from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify
+from flask_socketio import SocketIO, emit
 from models import DBManager
 from argon2 import PasswordHasher
 import pandas as pd
@@ -7,15 +8,20 @@ from io import BytesIO
 from PIL import Image
 import numpy as np
 import cv2
-# from tensorflow.keras.models import load_model
 from keras.models import load_model
 import os
-from flask import send_from_directory, abort, current_app
-import re
+import random
+from flask import send_from_directory
 import json
+import mysql.connector
+from datetime import datetime
+from ultralytics import YOLO
+import requests
+import sys
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
+socketio = SocketIO(app)
 
 @app.before_request
 def auto_login_for_dev():
@@ -27,94 +33,265 @@ def auto_login_for_dev():
 manager = DBManager()
 ph = PasswordHasher()
 
-# ======================== 모델 로드 ========================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH_CNN = os.path.join(BASE_DIR, "static", "battery_cnn_model.h5")
-model_secondary = load_model(MODEL_PATH_CNN, compile=False)
-MODEL_PATH_UNET = os.path.join(BASE_DIR, "static", "fine_tuned_unet_mobilenet_alpha08.h5")
-model_unet = load_model(MODEL_PATH_UNET, compile=False)
+db_config = {
+    "host": "localhost",
+    "user": "root",
+    "password": "1234",
+    "database": "defect_detection"
+}
 
-# =================== 마스크 시각화 함수 ===================
+def get_db_connection():
+    return mysql.connector.connect(**db_config)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH_YOLO = os.path.join(BASE_DIR, "static", "yolov8_battery_detection.pt")
+print(f"MODEL_PATH_YOLO: {MODEL_PATH_YOLO}", file=sys.stdout)
+yolo_model = YOLO(MODEL_PATH_YOLO)
+
+MODEL_PATH_CNN = os.path.join(BASE_DIR, "static", "cnn_defect_classification.h5")
+print(f"MODEL_PATH_CNN: {MODEL_PATH_CNN}", file=sys.stdout)
+try:
+    model_secondary = load_model(MODEL_PATH_CNN, compile=False)
+    print("CNN 모델 로드 성공", file=sys.stdout)
+except Exception as e:
+    print(f"CNN 모델 로드 실패: {str(e)}", file=sys.stdout)
+    model_secondary = None
+if model_secondary is not None:
+    print("CNN 모델 로드 확인: model_secondary is not None", file=sys.stdout)
+else:
+    print("CNN 모델 로드 확인: model_secondary is None", file=sys.stdout)
+
+MODEL_PATH_UNET = os.path.join(BASE_DIR, "static", "unet_defect_visualization.h5")
+print(f"MODEL_PATH_UNET: {MODEL_PATH_UNET}", file=sys.stdout)
+try:
+    model_unet = load_model(MODEL_PATH_UNET, compile=False)
+    print("U-Net 모델 로드 성공", file=sys.stdout)
+except Exception as e:
+    print(f"U-Net 모델 로드 실패: {str(e)}", file=sys.stdout)
+    model_unet = None
+if model_unet is not None:
+    print("U-Net 모델 로드 확인: model_unet is not None", file=sys.stdout)
+else:
+    print("U-Net 모델 로드 확인: model_unet is None", file=sys.stdout)
+
+CLASS_MAP = {"Normal": 0, "Pollution": 1, "Damaged": 2}
+REVERSE_CLASS_MAP = {v: k for k, v in CLASS_MAP.items()}
+
+YOLO_IMAGES_DIR = os.path.join(BASE_DIR, "static", "yolo_images")
+if not os.path.exists(YOLO_IMAGES_DIR):
+    os.makedirs(YOLO_IMAGES_DIR)
+print(f"YOLO_IMAGES_DIR: {YOLO_IMAGES_DIR}", file=sys.stdout)
+
+YOLO_IMAGES_DETECTED_DIR = os.path.join(BASE_DIR, "static", "yolo_images_detected")
+if not os.path.exists(YOLO_IMAGES_DETECTED_DIR):
+    os.makedirs(YOLO_IMAGES_DETECTED_DIR)
+print(f"YOLO_IMAGES_DETECTED_DIR: {YOLO_IMAGES_DETECTED_DIR}", file=sys.stdout)
+
+FAULTY_IMAGES_DIR = os.path.join(BASE_DIR, "static", "faulty_images")
+if not os.path.exists(FAULTY_IMAGES_DIR):
+    os.makedirs(FAULTY_IMAGES_DIR)
+print(f"FAULTY_IMAGES_DIR: {FAULTY_IMAGES_DIR}", file=sys.stdout)
+
+NORMAL_IMAGES_DIR = os.path.join(BASE_DIR, "static", "normal_images")
+if not os.path.exists(NORMAL_IMAGES_DIR):
+    os.makedirs(NORMAL_IMAGES_DIR)
+print(f"NORMAL_IMAGES_DIR: {NORMAL_IMAGES_DIR}", file=sys.stdout)
+
+VISUAL_IMAGES_DIR = os.path.join(BASE_DIR, "static", "visual_images")
+if not os.path.exists(VISUAL_IMAGES_DIR):
+    os.makedirs(VISUAL_IMAGES_DIR)
+print(f"VISUAL_IMAGES_DIR: {VISUAL_IMAGES_DIR}", file=sys.stdout)
+
+def generate_filename():
+    return datetime.now().strftime("%Y%m%d_%H%M%S") + ".jpg"
+
 def apply_unet_visualization(file):
+    if model_unet is None:
+        print("U-Net 모델이 로드되지 않았습니다. 시각화를 건너뜁니다.", file=sys.stdout)
+        return None, None, None
+
     img = Image.open(file).convert('RGB')
     original_size = img.size
     img_resized = img.resize((224, 224))
     img_array = np.array(img_resized) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
-    pred_mask = model_unet.predict(img_array)[0]
-    if pred_mask.ndim == 3:
-        pred_mask = pred_mask[:, :, 0]
-    mask = (pred_mask > 0.5).astype(np.uint8)
+    try:
+        pred_mask = model_unet.predict(img_array)[0]
+        if pred_mask.ndim == 3:
+            pred_mask = pred_mask[:, :, 0]
+        mask = (pred_mask > 0.5).astype(np.uint8)
 
-    # 불량점수 계산 (0~100 점수)
-    defect_ratio = np.sum(mask) / (224 * 224)
-    defect_score = min(defect_ratio * 10000, 100)
+        defect_ratio = np.sum(mask) / (224 * 224)
+        defect_score = min(defect_ratio * 10000, 100)
 
-    # 시각화
-    mask_resized = cv2.resize(mask, original_size, interpolation=cv2.INTER_NEAREST)
-    img_original = np.array(img)
-    overlay = img_original.copy()
-    overlay[mask_resized == 1] = [255, 0, 0]
+        y, x = np.where(mask == 1)
+        if len(y) > 0 and len(x) > 0:
+            y_center = np.mean(y)
+            x_center = np.mean(x)
+            fault_location = ""
+            if y_center < 112:
+                fault_location += "상단 "
+            else:
+                fault_location += "하단 "
+            if x_center < 112:
+                fault_location += "좌측"
+            else:
+                fault_location += "우측"
+        else:
+            fault_location = "미확인"
 
-    pil_overlay = Image.fromarray(overlay)
-    buf = BytesIO()
-    pil_overlay.save(buf, format='PNG')
-    base64_str = base64.b64encode(buf.getvalue()).decode('utf-8')
+        mask_resized = cv2.resize(mask, original_size, interpolation=cv2.INTER_NEAREST)
+        img_original = np.array(img)
+        overlay = img_original.copy()
+        overlay[mask_resized == 1] = [255, 0, 0]
 
-    return base64_str, round(defect_score, 1)
+        pil_overlay = Image.fromarray(overlay)
+        buf = BytesIO()
+        pil_overlay.save(buf, format='PNG')
+        base64_str = base64.b64encode(buf.getvalue()).decode('utf-8')
 
-# =================== CNN + 시각화 ===================
+        return base64_str, round(defect_score, 1), fault_location
+    except Exception as e:
+        print(f"U-Net 시각화 실패: {str(e)}", file=sys.stdout)
+        return None, None, None
+
 def classify_cnn(file):
     file_bytes = file.read()
     file_cnn = BytesIO(file_bytes)
     file_unet = BytesIO(file_bytes)
 
     img = Image.open(file_cnn).convert('RGB')
-    img_resized = img.resize((224, 224))
+    img_resized = img.resize((128, 128))
     img_array = np.array(img_resized) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
-    pred = model_secondary.predict(img_array)[0]
-    label_index = np.argmax(pred)
-    label = '정상' if label_index == 1 else '불량' 
+    if model_secondary is None:
+        print("CNN 모델이 로드되지 않았습니다. 기본값으로 설정합니다.", file=sys.stdout)
+        return {
+            'filename': file.filename,
+            'label': '오류',
+            'overlay': None,
+            'score': None,
+            'fault_location': None
+        }
 
-    result = {
-        'filename': file.filename,
-        'label': label,
-        'overlay': None,
-        'score': None
-    }
+    try:
+        pred = model_secondary.predict(img_array)[0]
+        pred_class = np.argmax(pred)
+        class_name = REVERSE_CLASS_MAP[pred_class]
+        label = '정상' if class_name == 'Normal' else '불량'
 
-    if label == '불량':
-        overlay_img, defect_score = apply_unet_visualization(file_unet)
-        result['overlay'] = overlay_img
-        result['score'] = defect_score
+        result = {
+            'filename': file.filename,
+            'label': label,
+            'overlay': None,
+            'score': None,
+            'fault_location': None
+        }
 
-    return result
+        if label == '불량':
+            overlay_img, defect_score, fault_location = apply_unet_visualization(file_unet)
+            result['overlay'] = overlay_img
+            result['score'] = defect_score
+            result['fault_location'] = fault_location
 
-# =================== 테스트 업로드 (페이지 출력 전용) ===================
-@app.route('/test-upload', methods=['GET'])
-def test_upload():
-    if 'userid' not in session:
-        return redirect(url_for('login'))
-    return render_template('test.html')
+        return result
+    except Exception as e:
+        print(f"CNN 예측 실패: {str(e)}", file=sys.stdout)
+        return {
+            'filename': file.filename,
+            'label': '오류',
+            'overlay': None,
+            'score': None,
+            'fault_location': None
+        }
 
-# =================== 실시간 분석 API (CNN만 빠르게) ===================
+@app.route("/api/detect-battery", methods=["POST"])
+def detect_battery():
+    if "image/jpeg" not in request.headers.get("Content-Type", ""):
+        print("Content-Type이 image/jpeg가 아님", file=sys.stdout)
+        return jsonify({"error": "Invalid content type"}), 400
+
+    image_data = request.get_data()
+    if not image_data:
+        print("이미지 데이터 수신 실패", file=sys.stdout)
+        return jsonify({"error": "No image data received"}), 400
+
+    image_array = np.frombuffer(image_data, np.uint8)
+    print(f"이미지 데이터 크기: {len(image_array)} bytes", file=sys.stdout)
+    image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+    if image is None:
+        print("이미지 디코딩 실패", file=sys.stdout)
+        return jsonify({"error": "Failed to load image: possibly corrupt JPEG data"}), 500
+    print(f"이미지 디코딩 성공: shape={image.shape}", file=sys.stdout)
+
+    # YOLO 탐지 (배터리 클래스만 인식)
+    results = yolo_model(image, conf=0.3, classes=[0])  # 배터리 클래스만 인식 (class 0)
+    is_battery = 0
+    confidence_score = 0.0
+    overlay_image = image.copy()
+
+    for result in results:
+        if result.boxes:
+            is_battery = 1
+            for box in result.boxes:
+                confidence_score = float(box.conf[0])
+                print(f"YOLO 탐지 성공: is_battery={is_battery}, confidence_score={confidence_score}", file=sys.stdout)
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                # 바운딩 박스 그리기
+                cv2.rectangle(overlay_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                # 확률 텍스트 추가
+                label = f"battery {confidence_score:.2f}"
+                cv2.putText(overlay_image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    # YOLO 오버레이 이미지 Base64로 변환
+    _, buffer = cv2.imencode('.jpg', overlay_image)
+    overlay_base64 = base64.b64encode(buffer).decode('utf-8')
+    socketio.emit('new_image', {'image_path': f"data:image/jpeg;base64,{overlay_base64}"})
+    print("new_image 이벤트 방출 완료", file=sys.stdout)
+
+    return jsonify({
+        "isBattery": is_battery,
+        "confidenceScore": confidence_score
+    })
+
+@app.route("/api/pause-scroll", methods=["POST"])
+def pause_scroll():
+    return jsonify({"status": "paused"}), 200
+
+@app.route("/api/resume-scroll", methods=["POST"])
+def resume_scroll():
+    return jsonify({"status": "resumed"}), 200
+
+@app.route("/api/get-latest-image")
+def get_latest_image():
+    # 실시간 데이터 사용 안 하므로 더미 이미지 경로 반환
+    return jsonify({"image_path": url_for('static', filename='yolo_images_detected/dummy.jpg')})
+
+@app.route('/conveyor')
+def conveyor():
+    return render_template('conveyor.html')
+
 @app.route('/analyze-one', methods=['POST'])
 def analyze_one():
-    file = request.files['image']
-    result = classify_cnn(file)
-    return jsonify(result)
+    if 'image' not in request.files:
+        return jsonify({'error': '이미지가 업로드되지 않았습니다.'}), 400
 
-# =================== 시각화 이미지 API (불량만 비동기) ===================
+    try:
+        file = request.files['image']
+        result = classify_cnn(file)
+        return jsonify(result)
+    except Exception as e:
+        print(f"[analyze-one 오류] {str(e)}", file=sys.stdout)
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/get-visual', methods=['POST'])
 def get_visual():
     file = request.files['image']
-    overlay_base64, _ = apply_unet_visualization(file)
-    return jsonify({'overlay': overlay_base64})
+    overlay_base64, defect_score, fault_location = apply_unet_visualization(file)
+    return jsonify({'overlay': overlay_base64, 'score': defect_score, 'fault_location': fault_location})
 
-# ======================== Flask 라우트들 ========================
 @app.route('/')
 def index():
     if 'userid' not in session:
@@ -127,104 +304,17 @@ def dashboard():
         return redirect(url_for('login'))
     return render_template('dashboard.html')
 
-# 불량 현황 페이지
 @app.route('/analysis')
 def analysis():
     if 'userid' not in session:
         return redirect(url_for('login'))
-    
-    faultyLog = manager.get_faulty_log()  # 불량 로그 가져오기
+    return render_template('analysis.html')
 
-    # 각 로그의 lineIdx로 라인 타입 가져오기
-    for log in faultyLog:
-        log['lineType'] = manager.get_linetype(log['lineIdx'])  
-
-    return render_template('analysis.html', faultyLog=faultyLog)
-
-
-@app.route('/batch-predict')
-def batch_predict():
+@app.route('/detail-analysis')
+def detail_analysis():
     if 'userid' not in session:
         return redirect(url_for('login'))
-
-    image_dir = os.path.join(BASE_DIR, 'images')
-    results = []
-    for fname in os.listdir(image_dir):
-        if fname.lower().endswith(('.jpg', '.jpeg', '.png')):
-            filepath = os.path.join(image_dir, fname)
-            with open(filepath, 'rb') as f:
-                score, overlay = predict_and_get_base64(f, use_secondary=True)
-                results.append({
-                    'filename': fname,
-                    'score': round(score, 1),
-                    'overlay': overlay
-                })
-
-    return render_template('batch_predict.html', results=results)
-
-# 불량 상세 분석
-@app.route('/detail-analysis', methods=['GET'])
-def detail_analysis(faultyIdx=None):
-    if 'userid' not in session:
-        return redirect(url_for('login'))
-
-    # 금일 불량 로그 가져오기
-    today_faulty_logs = manager.get_faulty_log(today_only=True)
-
-    # 금일 불량 로그 각각에 대한 라인명 추가
-    for log in today_faulty_logs:
-        line_type = manager.get_linetype(log['lineIdx'])
-        log['lineType'] = line_type  # 라인 타입 추가
-
-    # 페이지 번호 가져오기 (기본값 1)
-    page = request.args.get('page', 1, type=int)
-    per_page = 8  # 페이지당 표시할 로그 수
-
-    # 전체 불량 로그 가져오기
-    all_faulty_logs = manager.get_faulty_log()
-    total_logs = len(all_faulty_logs)  # 전체 로그 수
-    total_pages = (total_logs + per_page - 1) // per_page  # 총 페이지 수 계산
-
-    # 현재 페이지에 해당하는 로그 가져오기
-    start = (page - 1) * per_page
-    end = start + per_page
-    paginated_logs = all_faulty_logs[start:end]
-
-    # 각 로그에 대한 라인명 추가 및 추천 조치사항 가져오기
-    for log in paginated_logs:
-        line_type = manager.get_linetype(log['lineIdx'])
-        log['lineType'] = line_type
-        
-        # 불량 점수에 따른 추천 조치사항 가져오기
-        faultyScore = log['faultyScore']
-        recommendation = manager.get_recommendations_by_score(faultyScore)
-        print(f"추천 조치사항: {recommendation}")  # 로그 추가
-        log['recommendation'] = recommendation if recommendation else []
-
-    # 특정 불량 로그 상세 정보 가져오기
-    faultyLog = None
-    if faultyIdx is not None:
-        faultyLog = manager.get_faulty_log(faultyIdx=faultyIdx)
-        if not faultyLog:
-            return "해당 로그를 찾을 수 없습니다.", 404
-
-        # 특정 불량 로그에 대한 라인명 추가
-        line_type = manager.get_linetype(faultyLog[0]['lineIdx'])
-        faultyLog[0]['lineType'] = line_type 
-
-        # 불량 점수에 따른 추천 조치사항 가져오기
-        faultyScore = faultyLog[0]['faultyScore']
-        recommendation = manager.get_recommendations_by_score(faultyScore)
-        faultyLog[0]['recommendation'] = recommendation
-
-    return render_template('detail-analysis.html', 
-                           faultyLog=faultyLog, 
-                           today_faulty_logs=today_faulty_logs, 
-                           all_faulty_logs=paginated_logs, 
-                           page=page, 
-                           total_pages=total_pages)
-
-
+    return render_template('detail-analysis.html')
 
 @app.route('/monitoring')
 def monitoring():
@@ -240,7 +330,12 @@ def userpage():
     mydata = manager.get_user_info(session['userid'])
     return render_template('userpage.html', mydata=mydata)
 
-# 로그인
+@app.route('/system-management')
+def system_management():
+    if 'userid' not in session:
+        return redirect(url_for('login'))
+    return render_template('system-management.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -274,15 +369,12 @@ def login():
 
     return render_template('login.html')
 
-# 로그아웃 기능
 @app.route('/logout')
 def logout():
     session.clear()
     flash("로그아웃되었습니다.")
     return redirect(url_for('login'))
 
-
-# 회원가입
 @app.route('/join', methods=['GET', 'POST'])
 def join():
     if request.method == 'POST':
@@ -309,7 +401,6 @@ def join():
 
     return render_template('login.html')
 
-# ID 중복체크
 @app.route('/check_id', methods=['POST'])
 def check_id():
     data = request.json
@@ -317,7 +408,6 @@ def check_id():
     is_existing_user = manager.check_user_id_exists(user_id)
     return jsonify({'available': not is_existing_user})
 
-# 비밀번호 찾기
 @app.route('/find_password', methods=['POST', 'GET'])
 def find_password():
     if request.method == 'POST':
@@ -339,7 +429,6 @@ def find_password():
 
     return render_template('lost_password.html')
 
-# 비밀번호 변경
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password():
     userid = request.args.get('userid')
@@ -360,8 +449,6 @@ def reset_password():
             return render_template('reset_password.html', userid=userid, alert_message="비밀번호 업데이트 중 오류가 발생했습니다.")
     return render_template('reset_password.html', userid=userid)
 
-
-# 회원정보 수정
 @app.route('/update_member', methods=['POST'])
 def update_member():
     if 'userid' not in session:
@@ -405,7 +492,6 @@ def update_member():
         mydata = manager.get_member_mypage(user_id)
         return render_template('member/mypage.html', alert_message="회원정보 수정 중 오류가 발생했습니다.", mydata=mydata)
 
-# 회원탈퇴
 @app.route('/withdraw', methods=['POST'])
 def withdraw():
     if 'userid' not in session:
@@ -426,7 +512,6 @@ def withdraw():
         mydata = manager.get_member_mypage(user_id)
         return render_template('member/mypage.html', alert_message="회원 탈퇴 중 오류가 발생했습니다.", mydata=mydata)
 
-# 전체 회원 관리
 @app.route('/member_manage')
 def member_manage():
     per_page = 3
@@ -476,7 +561,6 @@ def member_manage():
         member_end_idx=member_end_idx
     )
 
-# 회원 승인
 @app.route('/approve_member', methods=['POST'])
 def approve_member():
     data = request.json
@@ -491,7 +575,6 @@ def approve_member():
     else:
         return jsonify({'success': False}), 400
 
-# 회원 거부 
 @app.route('/refuse_member', methods=['POST'])
 def refuse_member():
     data = request.json
@@ -505,8 +588,7 @@ def refuse_member():
         return jsonify({'success': True})
     else:
         return jsonify({'success': False}), 400
-
- # 전체 회원 관리 - 회원정보 수정    
+    
 @app.route('/edit_member/<userid>', methods=['GET'])
 def edit_member(userid):
     if 'userid' not in session or session.get('userLevel') < 100:
@@ -519,7 +601,6 @@ def edit_member(userid):
 
     return render_template('member/mypage.html', mydata=member_data)
 
-# 전체 회원 관리 - 회원 탈퇴 
 @app.route('/delete_member', methods=['POST'])
 def delete_member():
     data = request.json
@@ -530,7 +611,6 @@ def delete_member():
     else:
         return jsonify({'success': False, 'message': "회원 삭제 실패"})
 
-# 전체 회원 관리 - 회원 검색 
 @app.route('/search_members', methods=['POST'])
 def search_members():
     data = request.json
@@ -549,97 +629,9 @@ def search_members():
             return jsonify({'success': False})
 
     except Exception as e:
-        print(f"검색 중 오류 발생: {str(e)}")
+        print(f"검색 중 오류 발생: {str(e)}", file=sys.stdout)
         return jsonify({'success': False, 'message': f'검색 중 오류: {str(e)}'})
-    
 
-# 시스템 관리
-@app.route('/system-management')
-def system_management():
-    if 'userid' not in session:
-        flash("로그인 후 접근해 주세요.")
-        return redirect(url_for('login'))
-
-    user_id = session['userid']
-    user_info = manager.get_user_info(user_id)  # 사용자 정보 가져오기
-    
-    
-    return render_template('system-management.html', user_info=user_info)
-
-
-# 점검 요청하기 페이지 
-@app.route('/apply_management', methods=['GET', 'POST'])
-def apply_management():
-    if 'userid' not in session:
-        flash("로그인 후 접근해 주세요.")
-        return redirect(url_for('login'))
-
-    user_id = session.get('userid')
-    user_info = manager.get_user_info(user_id)
-
-    categoryIdx = request.form.get('categoryIdx')
-    email = request.form.get('email')
-    emailDomain = request.form.get('emailDomain')
-    applyTitle = request.form.get('applyTitle')
-    applyContent = request.form.get('applyContent')
-    applyFile = request.files.get('applyFileName')  # 업로드된 파일 가져오기
-
-
-    request_history = manager.get_apply_history(user_id)  # 유저의 요청 내역 가져오기
-
-    if not categoryIdx or not user_id or not email or not emailDomain or not applyTitle or not applyContent:
-        return render_template('system-management.html', alert_message="모든 필드를 입력해 주세요.", user_info=user_info, request_history = request_history)
-
-    userEmail = f"{email}@{emailDomain}"
-    file_path = None
-    filename = None  # filename 초기화
-
-    try:
-        if applyFile and applyFile.filename:
-            # 파일명에서 안전한 문자만 유지 (한글 포함)
-            filename = applyFile.filename
-            filename = re.sub(r'[^\w가-힣.-]', '_', filename)  # 한글, 영문, 숫자, .(점), -(하이픈) 허용
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
-            # 동일한 파일명이 존재하면 "_1", "_2" 붙이기
-            counter = 1
-            original_filename = filename
-            while os.path.exists(file_path):
-                name, ext = os.path.splitext(original_filename)
-                filename = f"{name}_{counter}{ext}"
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                counter += 1
-
-            applyFile.save(file_path)
-            print(f"파일 경로: {file_path}")
-        else:
-            print("첨부 파일 없음")
-
-    except Exception as e:
-        print(f"파일 저장 오류: {str(e)}")
-        return render_template('system-management.html', alert_message="파일 저장 중 오류 발생.", user_info=user_info, request_history = request_history)
-
-    # DB 저장
-    success, error_message = manager.insert_apply(categoryIdx, user_id, userEmail, applyTitle, applyContent, filename)
-
-    if success:
-        flash("요청이 성공적으로 등록되었습니다.", "success")
-        return redirect(url_for('apply_management'))  
-    else:
-        flash(f"요청 등록 실패: {error_message}", "error")
-        return redirect(url_for('apply_management')) 
-
-# 파일 다운로드    
-@app.route('/download/<filename>', methods=['GET'])
-def download_file(filename):
-    try:
-        # static/uploads 폴더에서 파일을 다운로드합니다.
-        return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
-    except FileNotFoundError:
-        abort(404)  # 파일이 존재하지 않을 경우 404 오류 반환
-
-
-# ======================== 차트용 데이터 API ========================
 def load_data():
     df = pd.read_csv("your_processed_data.csv")
     return df
@@ -649,33 +641,80 @@ def chart_data():
     chart_type = request.args.get("type")
     period = request.args.get("period")
 
-    df = load_data()  # 데이터를 로드하는 함수
+    df = load_data()
 
     if chart_type == "line":
-        # 생산라인별 불량률 데이터
         result = df.groupby("라인")[period].mean().sort_index()
         return jsonify({
-            "labels": result.index.tolist(),  # 라인 A, B, C, D
-            "values": result.values.tolist()  # 불량률 데이터
+            "labels": result.index.tolist(),
+            "values": result.values.tolist()
         })
 
     elif chart_type == "bar":
-        # 불량률 추이 데이터 (최신 날짜 순으로 정렬)
         result = df.groupby("날짜")[period].mean().sort_index(ascending=False)
         return jsonify({
-            "labels": result.index.tolist(),  # 최신 날짜
-            "values": result.values.tolist()  # 불량률 데이터
+            "labels": result.index.tolist(),
+            "values": result.values.tolist()
         })
-# ======================== 이상 알림 데이터 API ========================
-import random
 
 @app.route('/api/anomalies')
 def get_anomalies():
-    # 라인 A, B, C, D 중 랜덤으로 선택
-    lines = ["A", "B", "C", "D"]
-    anomaly = {"message": f"라인 {random.choice(lines)}에서 불량 발생"}  # 하나의 알림 생성
-    return jsonify(anomaly)
+    # 더미 데이터 반환 (실시간 데이터 사용 안 함)
+    return jsonify({"message": "라인 1에서 불량(심각) 발생", "alertId": "1"})
 
-# ======================== 앱 실행 ========================
+@app.route('/api/detail_data', methods=['GET'])
+def get_detail_data():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # faultLocation 필드 제거
+        query = """
+            SELECT fl.faultyIdx, fl.lineIdx, fl.faultyScore, fl.faultyImage, fl.status, fl.logDate,
+                   fv.visualImage, fv.faultScore
+            FROM faulty_log fl
+            LEFT JOIN fault_visual fv ON fl.faultyIdx = fv.faultyIdx
+            WHERE fl.removed = 0 AND (fv.removed = 0 OR fv.removed IS NULL)
+            ORDER BY fl.logDate DESC
+            LIMIT 40
+        """
+        cursor.execute(query)
+        results = cursor.fetchall()
+
+        # 이미지 파일을 Base64로 변환 (절대 경로 사용)
+        for result in results:
+            # faultyImage Base64 변환
+            faulty_image_path = os.path.join(BASE_DIR, result['faultyImage'])
+            if result['faultyImage'] and os.path.exists(faulty_image_path):
+                with open(faulty_image_path, 'rb') as f:
+                    result['faultyImage'] = base64.b64encode(f.read()).decode('utf-8')
+            else:
+                print(f"faultyImage not found: {faulty_image_path}")
+                result['faultyImage'] = None
+
+            # visualImage Base64 변환
+            visual_image_path = os.path.join(BASE_DIR, result['visualImage'])
+            if result['visualImage'] and os.path.exists(visual_image_path):
+                with open(visual_image_path, 'rb') as f:
+                    result['visualImage'] = base64.b64encode(f.read()).decode('utf-8')
+            else:
+                print(f"visualImage not found: {visual_image_path}")
+                result['visualImage'] = None
+
+        print(f"Returning {len(results)} records from /api/detail_data")
+        return jsonify(results)
+    except mysql.connector.Error as e:
+        print(f"Database error: {str(e)}", file=sys.stdout)
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}", file=sys.stdout)
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5050, debug=True)
+    print("Registered routes:", [rule.endpoint for rule in app.url_map.iter_rules()], file=sys.stdout)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)

@@ -48,7 +48,7 @@
     <!-- 이상 감지 알림 리스트 -->
     <div id="anomalyAlertContainer" class="anomaly-alert-container"></div>
 
-  <!-- 네비게이션 메뉴 -->
+<!-- 네비게이션 메뉴 -->
 <nav class="sidebar height-70">
   <ul class="nav-menu">
     <li class="nav-item {% if request.endpoint == 'dashboard' %}open{% endif %}">
@@ -58,9 +58,9 @@
     <li class="nav-item {% if request.endpoint in ['analysis', 'status', 'detail_analysis', 'monitoring'] %}open{% endif %}">
       <!-- "불량분석" 클릭 시 바로 analysis 페이지로 이동 -->
       <a href="{{ url_for('analysis') }}" class="color-white">
-        불량분석 <i class="fas fa-chevron-down submenu-toggle"></i>
+        불량 분석 <i class="fas fa-chevron-down submenu-toggle"></i>
       </a>
-      <ul class="submenu" {% if request.endpoint in ['status', 'analysis','detail_analysis', 'monitoring'] %}style="display: block;"{% endif %}>
+      <ul class="submenu" {% if request.endpoint in ['status', 'detail_analysis', 'monitoring'] %}style="display: block;"{% endif %}>
         <li><a href="{{ url_for('analysis') }}" class="color-white">불량 현황</a></li>
         <li><a href="{{ url_for('detail_analysis') }}" class="color-white">불량 상세분석</a></li>
         <li><a href="{{ url_for('monitoring') }}" class="color-white">실시간 모니터링</a></li>
@@ -88,10 +88,8 @@
     <li class="nav-item {% if request.endpoint == 'system_management' %}open{% endif %}">
       <a href="{{ url_for('system_management') }}" class="color-white">시스템설정</a>
     </li>
-    <li><a href="{{ url_for('test_upload') }}" class="color-white">실시간 테스트</a></li>
   </ul>
 </nav>
-  
 
     <!-- 메인 콘텐츠 영역 -->
     <main class="main-content height-70">

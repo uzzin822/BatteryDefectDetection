@@ -147,7 +147,7 @@ body, html {
 }
 
 .log-table th, .log-table td {
-  padding: 12px;
+  padding: 5px;
   border-bottom: 1px solid #eee;
   text-align: left;
   font-size: 14px;
