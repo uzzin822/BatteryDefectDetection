@@ -16,27 +16,41 @@ function updateUnreadAnomalyCount() {
 
 // 알림 모달에 추가
 function addNotification(message) {
-  const list = document.getElementById("notificationItems");
-  const item = document.createElement("div");
-  const now = new Date();
-  const time = now.toLocaleTimeString("ko-KR");
-  const date = now.toISOString().split("T")[0];
+    const list = document.getElementById("notificationItems");
+    const noNotifications = document.getElementById("noNotifications");
+    const clearAllBtn = document.getElementById("clearAllBtn");
+    const item = document.createElement("div");
+    const now = new Date();
+    const time = now.toLocaleTimeString("ko-KR");
+    const date = now.toISOString().split("T")[0];
 
-  item.classList.add("notification-item");
-  item.innerHTML = `
-    <span class="notification-text">${date} ${time} - ${message}</span>
-    <button class="delete-btn" onclick="removeNotification(this)">❌</button>
-  `;
+    item.classList.add("notification-item");
+    item.innerHTML = `
+        <span class="notification-text"><small>${date} ${time}</small>  <br>${message}</span>
+        <button class="delete-btn" onclick="removeNotification(this)">❌</button>
+    `;
 
-  list.prepend(item);
+    list.prepend(item);
+    noNotifications.style.display = "none"; // 알림이 있을 때 "알림이 없습니다." 숨기기
+    clearAllBtn.style.display = "inline-block"; // 전체 삭제 버튼 표시
 }
 
 function removeNotification(button) {
-  const text = button.parentElement.textContent;
-  unreadMessages = unreadMessages.filter(msg => !text.includes(msg));
-  button.parentElement.remove();
-  unreadCount = unreadMessages.length;
-  updateUnreadAnomalyCount();
+    const text = button.parentElement.textContent;
+    unreadMessages = unreadMessages.filter(msg => !text.includes(msg));
+    button.parentElement.remove();
+    unreadCount = unreadMessages.length;
+    updateUnreadAnomalyCount();
+
+    const list = document.getElementById("notificationItems");
+    const noNotifications = document.getElementById("noNotifications");
+    const clearAllBtn = document.getElementById("clearAllBtn");
+
+    // 알림이 없을 경우 "알림이 없습니다." 메시지 표시 및 전체 삭제 버튼 숨기기
+    if (list.childElementCount === 0) {
+        noNotifications.style.display = "block";
+        clearAllBtn.style.display = "none"; // 전체 삭제 버튼 숨기기
+    }
 }
 
 function clearAllNotifications() {
@@ -172,9 +186,9 @@ setInterval(() => {
   const randomLine = lines[Math.floor(Math.random() * lines.length)];
   const message = `⚠ 라인 ${randomLine}에서 불량 발생`;
   addAnomalyAlert(message);
-}, 5000); // 5초마다 테스트 알림 생성
+}, 60000); 
 
-// ⏱️ 30초마다 읽지 않은 메시지 체크
+// ⏱️ 1분마다 읽지 않은 메시지 체크
 setInterval(() => {
   checkUnreadMessages();
-}, 30000);
+}, 60000);
