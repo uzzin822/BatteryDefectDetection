@@ -36,7 +36,7 @@ ph = PasswordHasher()
 db_config = {
     "host": "218.209.20.32",
     "user": "obmfactory",
-    "password": "masterit1234!
+    "password": "masterit1234!"
     "database": "defect_detection"
 }
 
