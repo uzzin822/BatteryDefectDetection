@@ -34,8 +34,8 @@ manager = DBManager()
 ph = PasswordHasher()
 
 db_config = {
-    "host": "localhost",
-    "user": "root",
+    "host": "218.209.20.32",
+    "user": "obmfactory",
     "password": "1234",
     "database": "defect_detection"
 }
