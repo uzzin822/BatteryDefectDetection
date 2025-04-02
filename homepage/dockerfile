@@ -17,9 +17,9 @@ RUN pip install --no-cache-dir ultralytics==8.2.86
 # 4단계: mysql-connector-python과 protobuf 설치 (데이터베이스 연결 및 의존성 패키지)
 RUN pip install --no-cache-dir mysql-connector-python==9.2.0 protobuf==5.29.3
 
-# 5단계: 나머지 패키지 설치 (requirements.txt에 명시된 패키지들)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# 5단계: 나머지 패키지 설치 (requirements-docker.txt에 명시된 패키지들)
+COPY requirements-docker.txt .
+RUN pip install --no-cache-dir -r requirements-docker.txt
 
 # 프로젝트 파일 전체를 컨테이너의 /app 디렉토리로 복사
 COPY . .
