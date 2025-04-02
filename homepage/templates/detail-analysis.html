@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(error => {
             console.error('데이터 로드 실패:', error);
-            document.getElementById('defect-details').innerHTML = '<p>데이터 로드에 실패했습니다.</p>';
+            document.getElementById('defect-details').innerHTML = '<tr><td colspan = "4">데이터 로드에 실패했습니다.</td></tr>';
             document.getElementById('log-table').innerHTML = '<tr><td colspan="4">데이터 로드에 실패했습니다.</td></tr>';
         });
 });
