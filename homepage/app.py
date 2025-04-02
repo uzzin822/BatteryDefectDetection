@@ -717,4 +717,4 @@ def get_detail_data():
 
 if __name__ == '__main__':
     print("Registered routes:", [rule.endpoint for rule in app.url_map.iter_rules()], file=sys.stdout)
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5050, debug=True)
