@@ -235,6 +235,7 @@ document.addEventListener('DOMContentLoaded', function () {
             function populateLogTable() {
                 const logTable = document.getElementById('log-table');
                 logTable.innerHTML = '';
+                
                 const start = (logCurrentPage - 1) * LOGS_PER_PAGE;
                 const end = start + LOGS_PER_PAGE;
                 const paginatedData = logData.slice(start, end);
@@ -306,10 +307,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const allTab = document.getElementById('all-tab');
             const defectTab = document.getElementById('defect-tab');
             const normalTab = document.getElementById('normal-tab');
-
+            const nologmessage = document.getElementById('no-log-message');
             function handleTabClick(event, status) {
                 const logItems = document.querySelectorAll('.log-item');
-                logItems.forEach(item => {
+                if (logItems.length === 0) {
+                    nologmessage.style.display = 'none';
+                }else{
+                    logItems.forEach(item => {
                     const itemStatus = item.dataset.status;
                     if (status === 'all' || 
                        (status === 'defect' && itemStatus !== '정상') || 
@@ -317,6 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         item.style.display = '';
                     } else {
                         item.style.display = 'none';
+                        
                     }
                 });
 
@@ -326,6 +331,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 event.target.classList.remove('text-gray-700', 'border-gray-300');
                 event.target.classList.add('bg-blue-100', 'border-blue-500', 'text-blue-700');
+                }
+                
             }
 
             allTab.addEventListener('click', (e) => handleTabClick(e, 'all'));

@@ -96,6 +96,9 @@ function addAnomalyAlert(message) {
   lastReadTime = Date.now();
 }
 
+function logout(){
+  confirm("로그아웃 하시겠습니까?") ? window.location.href = "{{ url_for('logout') }}" : null;
+}
 function markAnomalyAsRead(button, message) {
   button.parentElement.remove();
   lastReadTime = Date.now();

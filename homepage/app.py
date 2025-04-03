@@ -1,4 +1,4 @@
-from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify, send_from_directory, abort, current_app
 from flask_socketio import SocketIO, emit
 from models import DBManager
 from argon2 import PasswordHasher
@@ -29,6 +29,7 @@ def auto_login_for_dev():
         session['userid'] = 'admin123'
         session['username'] = '김관리자'
         session['userLevel'] = 1000
+        session['useEmail'] = 'kim@naver.com'
 
 manager = DBManager()
 ph = PasswordHasher()
@@ -325,16 +326,96 @@ def monitoring():
 @app.route('/userpage')
 def userpage():
     if 'userid' not in session:
+        flash("로그인 후 접근해 주세요.")
         return redirect(url_for('login'))
 
-    mydata = manager.get_user_info(session['userid'])
-    return render_template('userpage.html', mydata=mydata)
+    user_id = session['userid']
+    mydata = manager.get_member_mypage(user_id)
+    return render_template('member/mypage.html', mydata=mydata)
 
+# 시스템 관리
 @app.route('/system-management')
 def system_management():
+
     if 'userid' not in session:
+        flash("로그인 후 접근해 주세요.")
         return redirect(url_for('login'))
-    return render_template('system-management.html')
+
+    user_id = session['userid']
+    user_info = manager.get_user_info(user_id)  # 사용자 정보 가져오기
+    
+    
+    return render_template('system-management.html', user_info=user_info)
+
+# 점검 요청하기 페이지 
+@app.route('/apply_management', methods=['GET', 'POST'])
+def apply_management():
+    if 'userid' not in session:
+        flash("로그인 후 접근해 주세요.")
+        return redirect(url_for('login'))
+
+    user_id = session.get('userid')
+    user_info = manager.get_user_info(user_id)
+
+    categoryIdx = request.form.get('categoryIdx')
+    email = request.form.get('email')
+    emailDomain = request.form.get('emailDomain')
+    applyTitle = request.form.get('applyTitle')
+    applyContent = request.form.get('applyContent')
+    applyFile = request.files.get('applyFileName')  # 업로드된 파일 가져오기
+
+
+    request_history = manager.get_apply_history(user_id)  # 유저의 요청 내역 가져오기
+
+    if not categoryIdx or not user_id or not email or not emailDomain or not applyTitle or not applyContent:
+        return render_template('system-management.html', alert_message="모든 필드를 입력해 주세요.", user_info=user_info, request_history = request_history)
+
+    userEmail = f"{email}@{emailDomain}"
+    file_path = None
+    filename = None  # filename 초기화
+
+    try:
+        if applyFile and applyFile.filename:
+            # 파일명에서 안전한 문자만 유지 (한글 포함)
+            filename = applyFile.filename
+            filename = re.sub(r'[^\w가-힣.-]', '_', filename)  # 한글, 영문, 숫자, .(점), -(하이픈) 허용
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+            # 동일한 파일명이 존재하면 "_1", "_2" 붙이기
+            counter = 1
+            original_filename = filename
+            while os.path.exists(file_path):
+                name, ext = os.path.splitext(original_filename)
+                filename = f"{name}_{counter}{ext}"
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                counter += 1
+
+            applyFile.save(file_path)
+            print(f"파일 경로: {file_path}")
+        else:
+            print("첨부 파일 없음")
+
+    except Exception as e:
+        print(f"파일 저장 오류: {str(e)}")
+        return render_template('system-management.html', alert_message="파일 저장 중 오류 발생.", user_info=user_info, request_history = request_history)
+
+    # DB 저장
+    success, error_message = manager.insert_apply(categoryIdx, user_id, userEmail, applyTitle, applyContent, filename)
+
+    if success:
+        flash("요청이 성공적으로 등록되었습니다.", "success")
+        return redirect(url_for('apply_management'))  
+    else:
+        flash(f"요청 등록 실패: {error_message}", "error")
+        return redirect(url_for('apply_management')) 
+    
+@app.route('/download/<filename>', methods=['GET'])
+def download_file(filename):
+    try:
+        # static/uploads 폴더에서 파일을 다운로드합니다.
+        return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+    except FileNotFoundError:
+        abort(404)  # 파일이 존재하지 않을 경우 404 오류 반환
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -588,7 +669,8 @@ def refuse_member():
         return jsonify({'success': True})
     else:
         return jsonify({'success': False}), 400
-    
+
+# 회원정보 수정     
 @app.route('/edit_member/<userid>', methods=['GET'])
 def edit_member(userid):
     if 'userid' not in session or session.get('userLevel') < 100:
@@ -601,6 +683,27 @@ def edit_member(userid):
 
     return render_template('member/mypage.html', mydata=member_data)
 
+# 레벨 수정 - 관리자 회원만 가능
+@app.route('/update_user_level', methods=['POST'])
+def update_user_level():
+    if 'userid' not in session:
+        return redirect(url_for('login'))
+
+    user_id = request.form.get('userid')
+
+    # userLevel을 1로 업데이트
+    success = manager.update_user_level(user_id, 1)  # DBManager에 해당 메서드 필요
+
+    if success:
+        # 회원의 이름을 가져오기
+        user_info = manager.get_user_info(user_id)  # 해당 메서드 추가 필요
+        flash(f"{user_info['username']} 회원이 일반회원으로 전환되었습니다.")
+    else:
+        flash("회원 전환 중 오류가 발생했습니다.")
+
+    return redirect(url_for('member_manage'))  # 관리자 관리 페이지로 리디렉션
+
+# 회원 탈퇴 처리
 @app.route('/delete_member', methods=['POST'])
 def delete_member():
     data = request.json

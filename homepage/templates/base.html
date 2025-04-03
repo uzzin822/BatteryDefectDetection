@@ -48,7 +48,7 @@
 
       <!-- 사용자명 및 로그인/로그아웃 버튼 -->
       <a href="{{ url_for('userpage') }}" class="username-link">{{ session.username }}</a>
-      <a href="#" class="logout-btn hidden" onclick="logout()">로그아웃</a>
+      <a href="{{ url_for('logout') }}" class="logout-btn hidden" onclick="logout()">로그아웃</a>
     </div>
   </header>
 
