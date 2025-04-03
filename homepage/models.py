@@ -469,7 +469,7 @@ class DBManager:
         finally:
             self.disconnect()
     
-
+    
 
     # 불량 로그 내역
     def get_faulty_log(self, faultyIdx=None, today_only=False):
@@ -499,28 +499,73 @@ class DBManager:
         finally:
             self.disconnect()
 
-
-    # 추천 조치사항 정보 가져오기 
-    def get_recommendations_by_score(self, faultyScore):
+    # 정상 로그 내역
+    def get_nomal_log(self, normal=None, today_only=False):
         try:
             self.connect()
-            sql = "SELECT actiontaken FROM recomm_act WHERE basescore <= %s"  # ✅ 필요한 컬럼만 선택
-            self.cursor.execute(sql, (faultyScore,))
+            if today_only:
+                # 금일 불량 로그 조회(쿼리 최적화 완료)
+                sql = "SELECT * FROM normal_log WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE() ORDER BY normalIdx DESC;"
+                self.cursor.execute(sql,)  # 오늘 날짜를 튜플로 전달
+
+            else:
+                # 모든 불량 로그 조회
+                sql = "SELECT * FROM normal_log ORDER BY logDate, normalIdx DESC"
+                self.cursor.execute(sql)
+
             results = self.cursor.fetchall()
-
-            # 결과가 없을 경우 빈 리스트 반환
-            if not results:
-                return []
-
-            # 추천 조치사항 리스트 형태로 반환
-            recommendations = [row['actiontaken'] for row in results]
-            return recommendations
-
+            print(f"Query results: {results}")  # 쿼리 결과 출력
+            return results  # 요청 내역 반환
         except mysql.connector.Error as error:
             print(f"DB 오류: {str(error)}")
-            return []  # 오류 발생 시 빈 리스트 반환
+            return None  # 오류 발생 시 None 반환
         finally:
             self.disconnect()
+
+    # 불량 로그와 정상 로그를 함께 가져오는 함수
+    def get_combined_logs(self, today_only=False):
+        try:
+            self.connect()
+            
+            # UNION을 사용하여 두 테이블의 데이터를 함께 가져오는 쿼리
+            sql = f"""
+                SELECT 
+                    faultyIdx AS idx, 
+                    lineIdx, 
+                    faultyScore AS score, 
+                    faultyImage AS image, 
+                    STATUS, 
+                    logDate,
+                    'faulty' AS log_type
+                FROM faulty_log
+                WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE()
+
+                UNION ALL
+
+                SELECT 
+                    normalIdx AS idx, 
+                    lineIdx, 
+                    NULL AS score, 
+                    normalImage AS image, 
+                    '정상' AS STATUS, 
+                    logDate,
+                    'normal' AS log_type
+                FROM normal_log
+                WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE()
+                ORDER BY logDate DESC, idx DESC;
+            """
+            
+            self.cursor.execute(sql)
+            results = self.cursor.fetchall()
+            print(f"Combined logs count: {len(results)}")
+            return results
+        
+        except mysql.connector.Error as error:
+            print(f"DB 오류: {str(error)}")
+            return None
+        finally:
+            self.disconnect()
+
 
 
 

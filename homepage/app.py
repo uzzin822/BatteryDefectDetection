@@ -311,12 +311,6 @@ def analysis():
         return redirect(url_for('login'))
     return render_template('analysis.html')
 
-@app.route('/detail-analysis')
-def detail_analysis():
-    if 'userid' not in session:
-        return redirect(url_for('login'))
-    return render_template('detail-analysis.html')
-
 @app.route('/monitoring')
 def monitoring():
     if 'userid' not in session:
@@ -765,58 +759,68 @@ def get_anomalies():
     # 더미 데이터 반환 (실시간 데이터 사용 안 함)
     return jsonify({"message": "라인 1에서 불량(심각) 발생", "alertId": "1"})
 
-@app.route('/api/detail_data', methods=['GET'])
-def get_detail_data():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+# 불량 상세분석
+@app.route('/detail-analysis', methods=['GET','POST'])
+def detail_analysis(faultyIdx=None):
+    if 'userid' not in session:
+        return redirect(url_for('login'))
+
+    # 금일 불량 로그 가져오기
+    today_faulty_logs = manager.get_faulty_log(today_only=True)
+
+    # 금일 불량 로그 각각에 대한 라인명 추가
+    for log in today_faulty_logs:
+        line_type = manager.get_linetype(log['lineIdx'])
+        log['lineType'] = line_type  # 라인 타입 추가
+
+    # 페이지 번호 가져오기 (기본값 1)
+    page = request.args.get('page', 1, type=int)
+    per_page = 8  # 페이지당 표시할 로그 수
+
+    # 불량 + 정상 데이터 로그 가져오기
+    today_combined_logs = manager.get_combined_logs(today_only=True)
+
+    # 전체 불량 로그 가져오기
+    all_faulty_logs = manager.get_faulty_log()
+    total_logs = len(all_faulty_logs)  # 전체 로그 수
+    total_pages = (total_logs + per_page - 1) // per_page  # 총 페이지 수 계산
+
+    # 현재 페이지에 해당하는 로그 가져오기
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated_logs = all_faulty_logs[start:end]
+
+    # 각 로그에 대한 라인명 추가 및 추천 조치사항 가져오기
+    for log in paginated_logs:
+        line_type = manager.get_linetype(log['lineIdx'])
+        log['lineType'] = line_type
         
-        # faultLocation 필드 제거
-        query = """
-            SELECT fl.faultyIdx, fl.lineIdx, fl.faultyScore, fl.faultyImage, fl.status, fl.logDate,
-                   fv.visualImage, fv.faultScore
-            FROM faulty_log fl
-            LEFT JOIN fault_visual fv ON fl.faultyIdx = fv.faultyIdx
-            WHERE fl.removed = 0 AND (fv.removed = 0 OR fv.removed IS NULL)
-            ORDER BY fl.logDate DESC
-            LIMIT 40
-        """
-        cursor.execute(query)
-        results = cursor.fetchall()
+        # 불량 점수에 따른 추천 조치사항 가져오기
+        faultyScore = log['faultyScore']
 
-        # 이미지 파일을 Base64로 변환 (절대 경로 사용)
-        for result in results:
-            # faultyImage Base64 변환
-            faulty_image_path = os.path.join(BASE_DIR, result['faultyImage'])
-            if result['faultyImage'] and os.path.exists(faulty_image_path):
-                with open(faulty_image_path, 'rb') as f:
-                    result['faultyImage'] = base64.b64encode(f.read()).decode('utf-8')
-            else:
-                print(f"faultyImage not found: {faulty_image_path}")
-                result['faultyImage'] = None
+    # 특정 불량 로그 상세 정보 가져오기
+    faultyLog = None
+    if faultyIdx is not None:
+        faultyLog = manager.get_faulty_log(faultyIdx=faultyIdx)
+        if not faultyLog:
+            return "해당 로그를 찾을 수 없습니다.", 404
 
-            # visualImage Base64 변환
-            visual_image_path = os.path.join(BASE_DIR, result['visualImage'])
-            if result['visualImage'] and os.path.exists(visual_image_path):
-                with open(visual_image_path, 'rb') as f:
-                    result['visualImage'] = base64.b64encode(f.read()).decode('utf-8')
-            else:
-                print(f"visualImage not found: {visual_image_path}")
-                result['visualImage'] = None
+        # 특정 불량 로그에 대한 라인명 추가
+        line_type = manager.get_linetype(faultyLog[0]['lineIdx'])
+        faultyLog[0]['lineType'] = line_type 
 
-        print(f"Returning {len(results)} records from /api/detail_data")
-        return jsonify(results)
-    except mysql.connector.Error as e:
-        print(f"Database error: {str(e)}", file=sys.stdout)
-        return jsonify({"error": f"Database error: {str(e)}"}), 500
-    except Exception as e:
-        print(f"Unexpected error: {str(e)}", file=sys.stdout)
-        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
+        # 불량 점수에 따른 추천 조치사항 가져오기
+        faultyScore = faultyLog[0]['faultyScore']
+
+    return render_template('detail-analysis.html', 
+                           faultyLog=faultyLog, 
+                           today_faulty_logs=today_faulty_logs,
+                           today_combined_logs = today_combined_logs, 
+                           all_faulty_logs=paginated_logs, 
+                           page=page, 
+                           total_pages=total_pages)
+
+
 
 if __name__ == '__main__':
     print("Registered routes:", [rule.endpoint for rule in app.url_map.iter_rules()], file=sys.stdout)
