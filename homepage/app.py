@@ -403,6 +403,14 @@ def apply_management():
     else:
         flash(f"요청 등록 실패: {error_message}", "error")
         return redirect(url_for('apply_management')) 
+    
+@app.route('/download/<filename>', methods=['GET'])
+def download_file(filename):
+    try:
+        # static/uploads 폴더에서 파일을 다운로드합니다.
+        return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+    except FileNotFoundError:
+        abort(404)  # 파일이 존재하지 않을 경우 404 오류 반환
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
