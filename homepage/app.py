@@ -23,13 +23,13 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 socketio = SocketIO(app)
 
-@app.before_request
-def auto_login_for_dev():
-    if not session.get('userid'):
-        session['userid'] = 'admin123'
-        session['username'] = '김관리자'
-        session['userLevel'] = 1000
-        session['useEmail'] = 'kim@naver.com'
+# @app.before_request
+# def auto_login_for_dev():
+#     if not session.get('userid'):
+#         session['userid'] = 'admin123'
+#         session['username'] = '김관리자'
+#         session['userLevel'] = 1000
+#         session['useEmail'] = 'kim@naver.com'
 
 manager = DBManager()
 ph = PasswordHasher()
@@ -338,6 +338,7 @@ def system_management():
     user_id = session['userid']
     user_info = manager.get_user_info(user_id)  # 사용자 정보 가져오기
     
+    print(user_info)
     
     return render_template('system-management.html', user_info=user_info)
 
@@ -402,17 +403,13 @@ def apply_management():
     else:
         flash(f"요청 등록 실패: {error_message}", "error")
         return redirect(url_for('apply_management')) 
-    
-@app.route('/download/<filename>', methods=['GET'])
-def download_file(filename):
-    try:
-        # static/uploads 폴더에서 파일을 다운로드합니다.
-        return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
-    except FileNotFoundError:
-        abort(404)  # 파일이 존재하지 않을 경우 404 오류 반환
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+
+    if 'userid' in session:
+        return redirect(url_for('dashboard'))
+
     if request.method == 'POST':
         userid = request.form.get('userid')
         password = request.form.get('password').strip()
@@ -759,69 +756,79 @@ def get_anomalies():
     # 더미 데이터 반환 (실시간 데이터 사용 안 함)
     return jsonify({"message": "라인 1에서 불량(심각) 발생", "alertId": "1"})
 
-# 불량 상세분석
-@app.route('/detail-analysis', methods=['GET','POST'])
-def detail_analysis(faultyIdx=None):
+@app.route('/detail-analysis', methods=['GET', 'POST'])
+def detail_analysis():
+    # 로그인 세션 확인
     if 'userid' not in session:
         return redirect(url_for('login'))
 
-    # 금일 불량 로그 가져오기
+    # 페이징 처리 함수
+    def paginate(logs, per_page, page):
+        total_logs = len(logs)
+        total_pages = (total_logs + per_page - 1) // per_page
+        start = (page - 1) * per_page
+        end = start + per_page
+        return logs[start:end], total_logs, total_pages
+
+    # URL 파라미터 가져오기
+    faultyIdx = request.args.get('faultyIdx', type=int)
+    log_type = request.args.get('type', default='all')  # 필터 타입 ('all', 'normal', 'faulty')
+    faulty_page = request.args.get('faulty_page', 1, type=int)
+    log_page = request.args.get('log_page', 1, type=int)
+
+    # 금일 불량 이미지 로그 가져오기
     today_faulty_logs = manager.get_faulty_log(today_only=True)
-
-    # 금일 불량 로그 각각에 대한 라인명 추가
     for log in today_faulty_logs:
-        line_type = manager.get_linetype(log['lineIdx'])
-        log['lineType'] = line_type  # 라인 타입 추가
+        log['lineType'] = manager.get_linetype(log['lineIdx'])  # 생산 라인명 추가
+    paginated_faulty_logs, total_faulty_logs, total_pages_faulty = paginate(today_faulty_logs, 8, faulty_page)
 
-    # 페이지 번호 가져오기 (기본값 1)
-    page = request.args.get('page', 1, type=int)
-    per_page = 8  # 페이지당 표시할 로그 수
-
-    # 불량 + 정상 데이터 로그 가져오기
+    # 금일 전체 로그 가져오기
     today_combined_logs = manager.get_combined_logs(today_only=True)
 
-    # 전체 불량 로그 가져오기
-    all_faulty_logs = manager.get_faulty_log()
-    total_logs = len(all_faulty_logs)  # 전체 로그 수
-    total_pages = (total_logs + per_page - 1) // per_page  # 총 페이지 수 계산
+    # 필터링 로직 적용
+    if log_type == 'normal':
+        # 정상 로그만 필터링
+        today_combined_logs = [
+            log for log in today_combined_logs if log.get('STATUS', '').strip() == '정상'
+        ]
+    elif log_type == 'faulty':
+        # 불량 로그만 필터링 (불량(심각) 또는 불량(주의))
+        today_combined_logs = [
+            log for log in today_combined_logs if log.get('STATUS', '').strip() in ['불량(심각)', '불량(주의)']
+        ]
 
-    # 현재 페이지에 해당하는 로그 가져오기
-    start = (page - 1) * per_page
-    end = start + per_page
-    paginated_logs = all_faulty_logs[start:end]
+    # 생산 라인명 추가
+    for log in today_combined_logs:
+        log['lineType'] = manager.get_linetype(log['lineIdx'])
 
-    # 각 로그에 대한 라인명 추가 및 추천 조치사항 가져오기
-    for log in paginated_logs:
-        line_type = manager.get_linetype(log['lineIdx'])
-        log['lineType'] = line_type
-        
-        # 불량 점수에 따른 추천 조치사항 가져오기
-        faultyScore = log['faultyScore']
+    paginated_combined_logs, total_logs, total_pages_combined = paginate(today_combined_logs, 10, log_page)
 
     # 특정 불량 로그 상세 정보 가져오기
     faultyLog = None
     if faultyIdx is not None:
         faultyLog = manager.get_faulty_log(faultyIdx=faultyIdx)
-        if not faultyLog:
-            return "해당 로그를 찾을 수 없습니다.", 404
+        if faultyLog:
+            faultyLog[0]['lineType'] = manager.get_linetype(faultyLog[0]['lineIdx'])
 
-        # 특정 불량 로그에 대한 라인명 추가
-        line_type = manager.get_linetype(faultyLog[0]['lineIdx'])
-        faultyLog[0]['lineType'] = line_type 
+    # 템플릿 렌더링
+    return render_template(
+        'detail-analysis.html',
+        faultyLog=faultyLog,
+        today_faulty_logs=paginated_faulty_logs,
+        today_combined_logs=paginated_combined_logs,
+        total_logs=total_logs,
+        total_faulty_logs=total_faulty_logs,
+        faulty_page=faulty_page,
+        log_page=log_page,
+        total_pages_faulty=total_pages_faulty,
+        total_pages_combined=total_pages_combined,
+        log_type=log_type  # 현재 탭 상태 전달
+    )
 
-        # 불량 점수에 따른 추천 조치사항 가져오기
-        faultyScore = faultyLog[0]['faultyScore']
-
-    return render_template('detail-analysis.html', 
-                           faultyLog=faultyLog, 
-                           today_faulty_logs=today_faulty_logs,
-                           today_combined_logs = today_combined_logs, 
-                           all_faulty_logs=paginated_logs, 
-                           page=page, 
-                           total_pages=total_pages)
 
 
 
+                           
 if __name__ == '__main__':
     print("Registered routes:", [rule.endpoint for rule in app.url_map.iter_rules()], file=sys.stdout)
     socketio.run(app, host="0.0.0.0", port=5050, debug=True)

@@ -106,7 +106,7 @@ class DBManager:
         """ 데이터베이스에서 특정 userid의 사용자 정보를 가져오기 (userid와 username) """
         try:
             self.connect()
-            sql = "SELECT userid, username, userLevel, refusal, removed FROM users WHERE userid = %s"
+            sql = "SELECT * FROM users WHERE userid = %s"
             self.cursor.execute(sql, (userid,))
             result = self.cursor.fetchone()
             return result if result else None
@@ -563,6 +563,36 @@ class DBManager:
         except mysql.connector.Error as error:
             print(f"DB 오류: {str(error)}")
             return None
+        finally:
+            self.disconnect()
+
+    # 점검 신청
+    def insert_apply(self, categoryIdx, userid, userEmail, applyTitle, applyContent, applyFileName):
+        try:
+            self.connect()
+            sql = """
+            INSERT INTO apply (categoryIdx, userid, userEmail, applyTitle, applyContent, applyFileName, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            """
+            self.cursor.execute(sql, (categoryIdx, userid, userEmail, applyTitle, applyContent, applyFileName))
+            self.connection.commit()
+            return True, None
+        except mysql.connector.Error as error:
+            return False, str(error)
+        finally:
+            self.disconnect()
+
+    # 점검 신청 내역 조회
+    def get_apply_history(self, user_id):
+        try:
+            self.connect()
+            sql = "SELECT * FROM apply WHERE userid = %s ORDER BY created_at DESC"
+            self.cursor.execute(sql, (user_id,))
+            results = self.cursor.fetchall()
+            return results  # 요청 내역 반환
+        except mysql.connector.Error as error:
+            print(f"DB 오류: {str(error)}")
+            return None  # 오류 발생 시 None 반환
         finally:
             self.disconnect()
 

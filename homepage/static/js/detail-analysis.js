@@ -1,161 +1,66 @@
-// const IMAGES_PER_PAGE = 12; // 한 페이지당 이미지 개수
-// const LOGS_PER_PAGE = 10; // 한 페이지당 로그 개수
-// let imageCurrentPage = 1;
-// let logCurrentPage = 1;
-// let logData = [];
+let currentPage = 1;
+const logsPerPage = 10;
+let currentType = 'all';
 
-// document.addEventListener('DOMContentLoaded', function () {
-//     const defectDetails = document.getElementById('defect-details');
-//     const logTable = document.getElementById('log-table');
-//     const defectImages = document.getElementById('defect-images');
+function filterLogs(type) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('type', type);
+    url.searchParams.set('log_page', 1); // 필터 바뀔 때 첫 페이지로 이동
 
-//     if (!defectDetails || !logTable || !defectImages) {
-//         console.error('필요한 DOM 요소가 로드되지 않았습니다.');
-//         return;
-//     }
+    window.location.href = url.toString();
+}
 
-//     // API에서 불량 및 정상 데이터 가져오기
-//     fetch('/api/detail_data')
-//         .then(response => response.json())
-//         .then(data => {
-//             console.log("Fetched data:", data);
 
-//             if (!data || data.length === 0) {
-//                 defectDetails.innerHTML = '<p>불량 데이터가 없습니다.</p>';
-//                 logTable.innerHTML = '<tr><td colspan="4">불량 데이터가 없습니다.</td></tr>';
-//                 defectImages.innerHTML = '';
-//                 return;
-//             }
+function updatePaginationAndDisplay() {
+    const logs = document.querySelectorAll("#logs-table tbody tr");
+    let filteredLogs = [];
 
-//             // 불량 및 정상 데이터 병합
-//             logData = data.map((item, index) => ({
-//                 faultyIdx: item.faultyIdx || (index + 1),
-//                 lineIdx: item.lineIdx,
-//                 faultScore: item.faultScore || null,
-//                 visualImage: item.visualImage || null,
-//                 status: item.status || '정상',
-//                 logDate: item.logDate
-//             }));
+    logs.forEach(log => {
+        const text = log.children[1].innerText.trim(); // 공백 제거
+        const isFaulty = text.startsWith("fault_");
+        const isNormal = text.startsWith("normal_");
 
-//             // 첫 번째 표시할 데이터 선택 (불량 데이터 우선)
-//             const firstItem = logData.find(item => item.status !== '정상') || logData[0];
+        if (currentType === 'all' ||
+            (currentType === 'faulty' && isFaulty) ||
+            (currentType === 'normal' && isNormal)) {
+            filteredLogs.push(log);
+        } else {
+            log.classList.add("hidden");
+        }
+    });
 
-//             document.getElementById('detail-date').textContent = new Date(firstItem.logDate).toLocaleString('ko-KR');
-//             document.getElementById('detail-line').textContent = `라인 ${firstItem.lineIdx}`;
-//             document.getElementById('detail-score').textContent = firstItem.faultScore ? `${firstItem.faultScore}/100` : '-';
-//             document.getElementById('detail-level').textContent = firstItem.status;
-//             document.getElementById('detail-level').className = firstItem.status.includes('불량') ? "text-red-500" : "text-green-500";
-//             document.getElementById('main-defect-image').src = firstItem.visualImage 
-//                 ? `/static/visual_images/${firstItem.visualImage.split('/').pop()}`
-//                 : 'https://via.placeholder.com/400x400?text=No+Image';
+    // 전체 숨기고, 현재 페이지에 맞는 것만 보여줌
+    filteredLogs.forEach(log => log.classList.add("hidden"));
+    const start = (currentPage - 1) * logsPerPage;
+    const end = start + logsPerPage;
+    filteredLogs.slice(start, end).forEach(log => log.classList.remove("hidden"));
 
-//             // 불량 이미지 목록 및 로그 테이블 채우기
-//             populateDefectImages();
-//             populateLogTable();
+    renderPagination(filteredLogs.length);
+}
 
-//             // 탭 메뉴 설정
-//             document.getElementById('all-tab').addEventListener('click', (e) => handleTabClick(e, 'all'));
-//             document.getElementById('defect-tab').addEventListener('click', (e) => handleTabClick(e, 'defect'));
-//             document.getElementById('normal-tab').addEventListener('click', (e) => handleTabClick(e, 'normal'));
+function renderPagination(totalLogs) {
+    const totalPages = Math.ceil(totalLogs / logsPerPage);
+    const paginationContainer = document.getElementById("pagination");
+    paginationContainer.innerHTML = ""; // 기존 버튼 제거
 
-//             // 초기 탭 설정
-//             handleTabClick({ target: document.getElementById('all-tab') }, 'all');
-//         })
-//         .catch(error => {
-//             console.error('데이터 로드 실패:', error);
-//         });
-// });
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement("button");
+        btn.innerText = i;
+        btn.className = "mx-1 px-2 py-1 rounded border" + (i === currentPage ? " bg-gray-400" : "");
+        btn.onclick = () => {
+            currentPage = i;
+            updatePaginationAndDisplay();
+        };
+        paginationContainer.appendChild(btn);
+    }
+}
 
-// // 로그 테이블 필터링 함수
-// function handleTabClick(event, status) {
-//     const logItems = document.querySelectorAll('.log-item');
-//     logItems.forEach(item => {
-//         const itemStatus = item.dataset.status;
-//         if (status === 'all' || 
-//            (status === 'defect' && itemStatus.includes('불량')) || 
-//            (status === 'normal' && itemStatus === '정상')) {
-//             item.style.display = '';
-//         } else {
-//             item.style.display = 'none';
-//         }
-//     });
-
-//     ['all-tab', 'defect-tab', 'normal-tab'].forEach(tabId => {
-//         const tab = document.getElementById(tabId);
-//         tab.classList.remove('bg-blue-100', 'border-blue-500', 'text-blue-700');
-//         tab.classList.add('text-gray-700', 'border-gray-300');
-//     });
-//     event.target.classList.add('bg-blue-100', 'border-blue-500', 'text-blue-700');
-// }
-
-// // 로그 테이블 생성
-// function populateLogTable() {
-//     const logTable = document.getElementById('log-table');
-//     logTable.innerHTML = '';
-//     const start = (logCurrentPage - 1) * LOGS_PER_PAGE;
-//     const end = start + LOGS_PER_PAGE;
-//     const paginatedData = logData.slice(start, end);
-
-//     paginatedData.forEach(item => {
-//         const logRow = document.createElement('tr');
-//         logRow.className = 'log-item';
-//         logRow.dataset.status = item.status;
-
-//         logRow.innerHTML = `
-//             <td>${new Date(item.logDate).toLocaleString('ko-KR')}</td>
-//             <td>#${item.faultyIdx}</td>
-//             <td>라인 ${item.lineIdx}</td>
-//             <td>
-//                 <span class="${item.status.includes('불량') ? 'text-red-500' : 'text-green-500'}">
-//                     ${item.status}
-//                 </span>
-//             </td>
-//         `;
-//         logTable.appendChild(logRow);
-//     });
-
-//     updateLogPaginationButtons();
-// }
-
-// // 로그 페이지네이션 버튼 업데이트
-// function updateLogPaginationButtons() {
-//     document.getElementById('log-prev-btn').disabled = logCurrentPage === 1;
-//     document.getElementById('log-next-btn').disabled = logCurrentPage * LOGS_PER_PAGE >= logData.length;
-// }
-
-// // 로그 페이지네이션 변경
-// function changeLogPage(delta) {
-//     logCurrentPage += delta;
-//     if (logCurrentPage < 1) logCurrentPage = 1;
-//     if (logCurrentPage > Math.ceil(logData.length / LOGS_PER_PAGE)) logCurrentPage = Math.ceil(logData.length / LOGS_PER_PAGE);
-//     populateLogTable();
-// }
-
-// // 불량 이미지 목록 생성
-// function populateDefectImages() {
-//     const defectImages = document.getElementById('defect-images');
-//     defectImages.innerHTML = '';
-//     const start = (imageCurrentPage - 1) * IMAGES_PER_PAGE;
-//     const end = start + IMAGES_PER_PAGE;
-//     const paginatedData = logData.slice(start, end);
-
-//     paginatedData.forEach((item, index) => {
-//         if (item.visualImage) {
-//             const imageItem = document.createElement('div');
-//             imageItem.className = 'cursor-pointer hover:opacity-80 image-item';
-//             imageItem.innerHTML = `
-//                 <img src="/static/visual_images/${item.visualImage.split('/').pop()}" class="w-full h-48 object-cover rounded-lg shadow-sm"/>
-//                 <p>라인 ${item.lineIdx} - 점수: ${item.faultScore || '-'}</p>
-//             `;
-//             defectImages.appendChild(imageItem);
-//         }
-//     });
-
-//     updateImagePaginationButtons();
-// }
-
-// // 이미지 페이지네이션 업데이트
-// function updateImagePaginationButtons() {
-//     document.getElementById('image-prev-btn').disabled = imageCurrentPage === 1;
-//     document.getElementById('image-next-btn').disabled = imageCurrentPage * IMAGES_PER_PAGE >= logData.length;
-// }
+function showDefectDetails(faultyIdx, logDate, lineType, faultyScore, status, faultyImage) {
+    document.getElementById('detail-faultyIdx').innerText = `fault_${faultyIdx}`;
+    document.getElementById('detail-date').innerText = logDate;
+    document.getElementById('detail-line').innerText = lineType;
+    document.getElementById('detail-score').innerText = faultyScore;
+    document.getElementById('detail-status').innerText = status;
+    document.getElementById('main-defect-image').src = faultyImage;
+    document.getElementById('defect-detail').style.display = 'block';
+}
