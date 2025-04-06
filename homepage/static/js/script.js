@@ -2,6 +2,44 @@
 // 실시간 이상 알림 + 모달 연동 (테스트용 메시지 추가)
 // ===============================
 
+
+document.addEventListener("DOMContentLoaded", function () {
+  const currentPath = window.location.pathname;
+  const menuItems = document.querySelectorAll(".nav-menu a");
+
+  let activeGroup = null;
+
+  // 먼저 on 다 제거
+  menuItems.forEach(item => item.classList.remove("on"));
+
+  // 실제 경로와 정확히 일치하는 하위 메뉴 찾기
+  menuItems.forEach(item => {
+    const dataUrl = item.getAttribute("data-url");
+    const isParentMenu = item.querySelector(".submenu-toggle") !== null;
+
+    if (dataUrl && currentPath === dataUrl && !isParentMenu) {
+      item.classList.add("on");
+      activeGroup = item.getAttribute("data-group");
+    }
+  });
+
+  // 해당 그룹의 상위 메뉴 on 표시
+  if (activeGroup) {
+    menuItems.forEach(item => {
+      const isParentMenu = item.querySelector(".submenu-toggle") !== null;
+      if (
+        isParentMenu &&
+        item.getAttribute("data-group") === activeGroup
+      ) {
+        item.classList.add("on");
+      }
+    });
+  }
+});
+
+
+
+
 let unreadCount = 0;
 let lastReadTime = Date.now();
 let unreadMessages = [];

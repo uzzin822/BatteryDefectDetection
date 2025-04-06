@@ -17,7 +17,8 @@ import mysql.connector
 from datetime import datetime
 from ultralytics import YOLO
 import requests
-import sys
+import sys, re
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -33,16 +34,22 @@ socketio = SocketIO(app)
 
 manager = DBManager()
 ph = PasswordHasher()
+load_dotenv()
 
 db_config = {
-    "host": "218.209.20.32",
-    "user": "obmfactory",
-    "password": "masterit1234!",
-    "database": "defect_detection"
+    "host": os.getenv("DB_HOST"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "database": os.getenv("DB_NAME")
 }
 
 def get_db_connection():
     return mysql.connector.connect(**db_config)
+
+# 파일 업로드 폴더 설정
+UPLOAD_FOLDER = '/path/to/uploads'  # 실제 파일 저장 경로로 변경하세요
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # 폴더가 없으면 생성
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH_YOLO = os.path.join(BASE_DIR, "static", "yolov8_battery_detection.pt")
@@ -303,7 +310,10 @@ def index():
 def dashboard():
     if 'userid' not in session:
         return redirect(url_for('login'))
-    return render_template('dashboard.html')
+    
+    last_log = manager.get_combined_logs()
+
+    return render_template('dashboard.html', last_log=last_log)
 
 @app.route('/analysis')
 def analysis():
@@ -328,7 +338,7 @@ def userpage():
     return render_template('member/mypage.html', mydata=mydata)
 
 # 시스템 관리
-@app.route('/system-management')
+@app.route('/system_management')
 def system_management():
 
     if 'userid' not in session:
@@ -337,10 +347,11 @@ def system_management():
 
     user_id = session['userid']
     user_info = manager.get_user_info(user_id)  # 사용자 정보 가져오기
+    request_history = manager.get_apply_history(user_id)  # 유저의 요청 내역 가져오기
+
     
-    print(user_info)
     
-    return render_template('system-management.html', user_info=user_info)
+    return render_template('system-management.html', user_info=user_info, request_history= request_history)
 
 # 점검 요청하기 페이지 
 @app.route('/apply_management', methods=['GET', 'POST'])
@@ -350,8 +361,10 @@ def apply_management():
         return redirect(url_for('login'))
 
     user_id = session.get('userid')
-    user_info = manager.get_user_info(user_id)
+    user_info = manager.get_user_info(user_id)  # 사용자 정보 가져오기
 
+
+    userid = request.form.get('userid')
     categoryIdx = request.form.get('categoryIdx')
     email = request.form.get('email')
     emailDomain = request.form.get('emailDomain')
@@ -395,7 +408,7 @@ def apply_management():
         return render_template('system-management.html', alert_message="파일 저장 중 오류 발생.", user_info=user_info, request_history = request_history)
 
     # DB 저장
-    success, error_message = manager.insert_apply(categoryIdx, user_id, userEmail, applyTitle, applyContent, filename)
+    success, error_message = manager.insert_apply(categoryIdx, userid, userEmail, applyTitle, applyContent, filename)
 
     if success:
         flash("요청이 성공적으로 등록되었습니다.", "success")
@@ -764,7 +777,7 @@ def get_anomalies():
     # 더미 데이터 반환 (실시간 데이터 사용 안 함)
     return jsonify({"message": "라인 1에서 불량(심각) 발생", "alertId": "1"})
 
-@app.route('/detail-analysis', methods=['GET', 'POST'])
+@app.route('/detail_analysis', methods=['GET', 'POST'])
 def detail_analysis():
     # 로그인 세션 확인
     if 'userid' not in session:

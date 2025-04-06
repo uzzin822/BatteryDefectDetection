@@ -2,6 +2,10 @@ from argon2 import PasswordHasher
 import mysql.connector
 from argon2.exceptions import VerifyMismatchError, VerificationError
 import requests,time
+from dotenv import load_dotenv
+import os
+
+load_dotenv() 
 
 class DBManager:
     def __init__(self):
@@ -12,10 +16,10 @@ class DBManager:
     def connect(self):
         try:
             self.connection = mysql.connector.connect(
-                host="218.209.20.32",
-                user="obmfactory",
-                password="masterit1234!",
-                database="defect_detection"
+                host=os.getenv("DB_HOST"),
+                user=os.getenv("DB_USER"),
+                password=os.getenv("DB_PASSWORD"),
+                database=os.getenv("DB_NAME")
             )
             self.cursor = self.connection.cursor(dictionary=True)
         except mysql.connector.Error as error:
@@ -526,45 +530,73 @@ class DBManager:
     def get_combined_logs(self, today_only=False):
         try:
             self.connect()
-            
-            # UNION을 사용하여 두 테이블의 데이터를 함께 가져오는 쿼리
-            sql = f"""
-                SELECT 
-                    faultyIdx AS idx, 
-                    lineIdx, 
-                    faultyScore AS score, 
-                    faultyImage AS image, 
-                    STATUS, 
-                    logDate,
-                    'faulty' AS log_type
-                FROM faulty_log
-                WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE()
+            if today_only:
+                # Fetch only today's logs
+                sql = """
+                    SELECT 
+                        faultyIdx AS idx, 
+                        lineIdx, 
+                        faultyScore AS score, 
+                        faultyImage AS image, 
+                        STATUS, 
+                        logDate,
+                        'faulty' AS log_type
+                    FROM faulty_log
+                    WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE()
 
-                UNION ALL
+                    UNION ALL
 
-                SELECT 
-                    normalIdx AS idx, 
-                    lineIdx, 
-                    NULL AS score, 
-                    normalImage AS image, 
-                    '정상' AS STATUS, 
-                    logDate,
-                    'normal' AS log_type
-                FROM normal_log
-                WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE()
-                ORDER BY logDate DESC, idx DESC;
-            """
-            
+                    SELECT 
+                        normalIdx AS idx, 
+                        lineIdx, 
+                        NULL AS score, 
+                        normalImage AS image, 
+                        '정상' AS STATUS, 
+                        logDate,
+                        'normal' AS log_type
+                    FROM normal_log
+                    WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE()
+                    ORDER BY logDate DESC, idx DESC;
+                """
+            else:
+                # Fetch the most recent logs regardless of the date
+                sql = """
+                    SELECT 
+                        faultyIdx AS idx, 
+                        lineIdx, 
+                        faultyScore AS score, 
+                        faultyImage AS image, 
+                        STATUS, 
+                        logDate,
+                        'faulty' AS log_type
+                    FROM faulty_log
+
+                    UNION ALL
+
+                    SELECT 
+                        normalIdx AS idx, 
+                        lineIdx, 
+                        NULL AS score, 
+                        normalImage AS image, 
+                        '정상' AS STATUS, 
+                        logDate,
+                        'normal' AS log_type
+                    FROM normal_log
+                    ORDER BY logDate DESC, idx DESC;
+                """
+
+            # Execute the query and fetch results
             self.cursor.execute(sql)
             results = self.cursor.fetchall()
             print(f"Combined logs count: {len(results)}")
             return results
-        
+
         except mysql.connector.Error as error:
             print(f"DB 오류: {str(error)}")
             return None
         finally:
             self.disconnect()
+
 
     # 점검 신청
     def insert_apply(self, categoryIdx, userid, userEmail, applyTitle, applyContent, applyFileName):

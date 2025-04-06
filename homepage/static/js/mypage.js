@@ -1,47 +1,50 @@
-// static/js/mypage.js
+document.addEventListener('DOMContentLoaded', function () {
+    const domainInput = document.getElementById('domain'); // 도메인 입력창
+    const domainSelect = document.getElementById('domainSelect'); // 도메인 선택 박스
 
-function saveUserInfo() {
-    alert('사용자 정보가 저장되었습니다.');
-}
+    // 초기 설정
+    const initialDomain = domainInput.value; // 입력된 도메인
+    let domainMatched = false;
 
-function saveSettings() {
-    const notifTime = document.getElementById('notifTime').value;
-    const notifType = document.getElementById('notifType').value;
-    const pushNotif = document.getElementById('pushNotif').checked;
-
-    localStorage.setItem('notifTime', notifTime);
-    localStorage.setItem('notifType', notifType);
-    localStorage.setItem('pushNotif', pushNotif);
-
-    alert('알림 설정이 저장되었습니다.');
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-    // 알림 설정 초기화
-    const notifTime = document.getElementById('notifTime');
-    const notifType = document.getElementById('notifType');
-    const pushNotif = document.getElementById('pushNotif');
-
-    if (notifTime && notifType && pushNotif) {
-        notifTime.value = localStorage.getItem('notifTime') || '즉시';
-        notifType.value = localStorage.getItem('notifType') || 'all';
-        pushNotif.checked = localStorage.getItem('pushNotif') === 'true';
+    for (let i = 0; i < domainSelect.options.length; i++) {
+        if (domainSelect.options[i].value === initialDomain) {
+            domainSelect.selectedIndex = i;
+            domainMatched = true;
+            break;
+        }
     }
 
-    // 이메일 도메인 처리
-    const domainSelect = document.getElementById('domainSelect');
-    const domainInput = document.getElementById('domain');
-
-    if (domainSelect && domainInput) {
-        domainSelect.addEventListener('change', function () {
-            if (this.value === '기타 입력') {
-                domainInput.readOnly = false;
-                domainInput.value = '';
-                domainInput.focus();
-            } else {
-                domainInput.readOnly = true;
-                domainInput.value = this.value;
-            }
-        });
+    if (!domainMatched) {
+        domainSelect.value = '기타 입력';
+        domainInput.removeAttribute('readonly');
+        console.log("Custom domain detected");
+    } else {
+        domainInput.setAttribute('readonly', true);
+        console.log("Domain matched with select box");
     }
+
+    // 셀렉트 박스 변경 이벤트
+    domainSelect.addEventListener('change', function () {
+        const selectedValue = this.value;
+        if (selectedValue === '기타 입력') {
+            domainInput.value = '';
+            domainInput.removeAttribute('readonly');
+            domainInput.focus();
+        } else {
+            domainInput.value = selectedValue;
+            domainInput.setAttribute('readonly', true);
+        }
+        console.log("Selected value:", selectedValue);
+    });
 });
+
+// 회원 탈퇴 확인
+function confirmWithdrawal() {
+    if (confirm("정말로 회원 탈퇴하시겠습니까?")) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/withdraw';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}

@@ -29,6 +29,21 @@ a:hover {
   transition: color 0.2s ease;
 }
 
+.nav-item > a.on {
+  background-color: #1abc9c; /* 활성화된 메뉴의 배경색 */
+  color: white; /* 활성화된 메뉴의 글자색 */
+  font-weight: bold; /* 글자를 굵게 표시 */
+}
+
+.submenu a.on {
+  font-weight: bold;
+  color: #1abc9c;
+  border-left: 4px solid #1abc9c;
+  background-color: rgba(26, 188, 156, 0.1);
+  padding-left: 14px;
+}
+
+
 /* ============================== */
 /* 헤더 */
 /* ============================== */

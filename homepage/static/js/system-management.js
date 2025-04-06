@@ -1,62 +1,84 @@
-// // 파일명 표시
-// function showFileName() {
-//     const fileInput = document.getElementById('file-upload');
-//     const fileName = document.getElementById('fileName');
-//     if (fileInput.files.length > 0) {
-//         fileName.textContent = fileInput.files[0].name;
-//     } else {
-//         fileName.textContent = '선택된 파일 없음';
-//     }
-// }
+// 파일명 표시
+function showFileName() {
+    const fileInput = document.getElementById('file-upload');
+    const fileName = document.getElementById('fileName');
+    if (fileInput.files.length > 0) {
+        fileName.textContent = fileInput.files[0].name;
+    } else {
+        fileName.textContent = '선택된 파일 없음';
+    }
+}
 
-// // 폼 초기화
-// function resetForm() {
-//     document.querySelectorAll('input[type="text"], textarea').forEach(input => {
-//         input.value = '';
-//     });
-//     document.querySelectorAll('input[type="radio"]').forEach(radio => {
-//         radio.checked = false;
-//     });
-//     document.getElementById('fileName').textContent = '선택된 파일 없음';
-// }
+// 폼 초기화
+function resetForm() {
+    document.querySelectorAll('input[type="text"], textarea').forEach(input => {
+        input.value = '';
+    });
+    document.querySelectorAll('input[type="radio"]').forEach(radio => {
+        radio.checked = false;
+    });
+    document.getElementById('fileName').textContent = '선택된 파일 없음';
+}
 
-// // 탭 전환
-// function showTab(tabId) {
-//     document.querySelectorAll('.tab-content').forEach(content => {
-//         content.style.display = 'none';
-//     });
-//     document.getElementById(tabId).style.display = 'block';
+// 탭 전환
+function showTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.style.display = 'none';
+    });
+    document.getElementById(tabId).style.display = 'block';
 
-//     document.querySelectorAll('.tab').forEach(tab => {
-//         tab.classList.remove('active');
-//     });
-//     event.target.classList.add('active');
-// }
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    event.target.classList.add('active');
+}
+document.getElementById('emailExt').addEventListener('change', function () {
+    const emailDomainInput = document.getElementById('emailDomain');
+    const selectedValue = this.value;
 
-// // 요청 제출
-// function submitRequest(event) {
-//     event.preventDefault(); // 기본 폼 제출 방지
+    if (selectedValue === "직접 입력") {
+        emailDomainInput.value = "";
+        emailDomainInput.removeAttribute('readonly'); // 입력 가능하도록 변경
+        emailDomainInput.focus();
+    } else {
+        emailDomainInput.value = selectedValue;
+        emailDomainInput.setAttribute('readonly', 'readonly'); // 읽기 전용으로 설정
+    }
+});
 
-//     const categoryIdx = document.querySelector('input[name="categoryIdx"]:checked');
-//     const userid = document.getElementById('userid').value;
-//     const emailId = document.getElementById('email').value;
-//     const emailDomain = document.getElementById('emailDomain').value;
-//     const applyTitle = document.getElementById('applyTitle').value;
-//     const applyContent = document.getElementById('applyContent').value;
+// 요청 제출
+function submitRequest(event) {
+    event.preventDefault(); // 기본 폼 제출 방지
 
-//     let errorMessage = '';
-//     if (!categoryIdx) errorMessage += '점검 분야를 선택해주세요.\n';
-//     if (!userid) errorMessage += '이름을 입력해주세요.\n';
-//     if (!emailId) errorMessage += '이메일 아이디를 입력해주세요.\n';
-//     if (!emailDomain) errorMessage += '이메일 도메인을 입력해주세요.\n';
-//     if (!applyTitle) errorMessage += '제목을 입력해주세요.\n';
-//     if (!applyContent) errorMessage += '내용을 입력해주세요.\n';
+    // 입력값 가져오기
+    const categoryIdx = document.querySelector('input[name="categoryIdx"]:checked');
+    const userid = document.getElementById('userid').value.trim();
+    const emailId = document.getElementById('email').value.trim();
+    const emailDomain = document.getElementById('emailDomain').value.trim();
+    const applyTitle = document.getElementById('applyTitle').value.trim();
+    const applyContent = document.getElementById('applyContent').value.trim();
 
-//     if (errorMessage) {
-//         alert(errorMessage);
-//         return;
-//     }
+    // 유효성 검사
+    if (!categoryIdx) {
+        alert("점검 분야를 선택해주세요.");
+        return;
+    }
 
-//     // 폼 제출
-//     document.querySelector('form').submit();
-// }
+    if (!emailId || !emailDomain) {
+        alert("이메일을 올바르게 입력해주세요.");
+        return;
+    }
+
+    if (!applyTitle) {
+        alert("제목을 입력해주세요.");
+        return;
+    }
+
+    if (!applyContent) {
+        alert("내용을 입력해주세요.");
+        return;
+    }
+
+    // 모든 검사를 통과하면 form 제출
+    document.querySelector('form').submit();
+}
