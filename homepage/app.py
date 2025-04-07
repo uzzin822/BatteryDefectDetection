@@ -1,4 +1,4 @@
-from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify, send_from_directory, abort, current_app
+from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify, send_from_directory, abort, current_app, Response
 from flask_socketio import SocketIO, emit
 from models import DBManager
 from argon2 import PasswordHasher
@@ -19,6 +19,7 @@ from ultralytics import YOLO
 import requests
 import sys, re
 from dotenv import load_dotenv
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -217,21 +218,31 @@ def classify_cnn(file):
 
 @app.route("/api/detect-battery", methods=["POST"])
 def detect_battery():
+    print("detect-battery 엔드포인트 호출됨", file=sys.stdout)
+    # Content-Type 확인
     if "image/jpeg" not in request.headers.get("Content-Type", ""):
         print("Content-Type이 image/jpeg가 아님", file=sys.stdout)
         return jsonify({"error": "Invalid content type"}), 400
 
+    # 이미지 데이터 수신 확인
     image_data = request.get_data()
     if not image_data:
         print("이미지 데이터 수신 실패", file=sys.stdout)
-        return jsonify({"error": "No image data received"}), 400
+        error_message = "카메라 연결이 끊겼습니다. 설비 점검을 요청합니다."
+        socketio.emit('new_alert', {'message': error_message, 'fault_score': 'N/A', 'fault_location': '라인 A'})
+        print("new_alert 이벤트 전송: 이미지 데이터 없음", file=sys.stdout)
+        return jsonify({"error": "No image data received", "message": error_message}), 400
 
+    # 이미지 디코딩
     image_array = np.frombuffer(image_data, np.uint8)
     print(f"이미지 데이터 크기: {len(image_array)} bytes", file=sys.stdout)
     image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
     if image is None:
         print("이미지 디코딩 실패", file=sys.stdout)
-        return jsonify({"error": "Failed to load image: possibly corrupt JPEG data"}), 500
+        error_message = "카메라 연결이 끊겼습니다. 설비 점검을 요청합니다."
+        socketio.emit('new_alert', {'message': error_message, 'fault_score': 'N/A', 'fault_location': '라인 A'})
+        print("new_alert 이벤트 전송: 이미지 디코딩 실패", file=sys.stdout)
+        return jsonify({"error": "Failed to load image: possibly corrupt JPEG data", "message": error_message}), 500
     print(f"이미지 디코딩 성공: shape={image.shape}", file=sys.stdout)
 
     # YOLO 탐지 (배터리 클래스만 인식)
@@ -252,6 +263,22 @@ def detect_battery():
                 # 확률 텍스트 추가
                 label = f"battery {confidence_score:.2f}"
                 cv2.putText(overlay_image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    # 배터리 인식 실패 시 경고 메시지 전송
+    if is_battery == 0:
+        print("YOLO 배터리 인식 실패", file=sys.stdout)
+        warning_message = "카메라 연결이 끊겼습니다. 설비 점검을 요청합니다."
+        socketio.emit('new_alert', {'message': warning_message, 'fault_score': 'N/A', 'fault_location': '라인 A'})
+        print("new_alert 이벤트 전송: YOLO 인식 실패", file=sys.stdout)
+        # 오버레이 이미지 없이 빈 상태로 전송
+        _, buffer = cv2.imencode('.jpg', overlay_image)
+        overlay_base64 = base64.b64encode(buffer).decode('utf-8')
+        socketio.emit('new_image', {'image_path': f"data:image/jpeg;base64,{overlay_base64}"})
+        return jsonify({
+            "isBattery": is_battery,
+            "confidenceScore": confidence_score,
+            "message": warning_message
+        })
 
     # YOLO 오버레이 이미지 Base64로 변환
     _, buffer = cv2.imencode('.jpg', overlay_image)
@@ -276,6 +303,93 @@ def resume_scroll():
 def get_latest_image():
     # 실시간 데이터 사용 안 하므로 더미 이미지 경로 반환
     return jsonify({"image_path": url_for('static', filename='yolo_images_detected/dummy.jpg')})
+
+# 불량 및 정상로그 API
+@app.route('/api/total_log', methods=['GET'])
+def fetch_logs():
+    status = request.args.get('status')  # 상태 필터
+    line = request.args.get('line')  # 라인 필터 (lineName)
+
+    logs = manager.get_combined_logs()
+
+    if logs is None:
+        return jsonify({"error": "데이터베이스 오류"}), 500
+
+    # 상태 필터링
+    if status:
+        logs = [log for log in logs if log['STATUS'] == status]
+
+    # 라인 필터링
+    if line:
+        logs = [log for log in logs if log['lineName'] == line]
+
+    # 날짜를 문자열로 변환
+    for log in logs:
+        if isinstance(log['logDate'], datetime):  # logDate가 datetime 객체일 경우
+            log['logDate'] = log['logDate'].strftime('%Y-%m-%d %H:%M:%S')  # 원하는 형식으로 변환
+
+    # 페이징 처리
+    page = int(request.args.get('page', 1))
+    items_per_page = int(request.args.get('items_per_page', 10))
+    total_items = len(logs)
+    start_idx = (page - 1) * items_per_page
+    end_idx = start_idx + items_per_page
+    paginated_logs = logs[start_idx:end_idx]
+
+    return jsonify({
+        "logs": paginated_logs,
+        "total_items": total_items,
+        "current_page": page,
+        "items_per_page": items_per_page,
+        "total_pages": (total_items + items_per_page - 1) // items_per_page
+    })
+
+
+# CSV 다운로드
+@app.route('/api/export_logs', methods=['GET'])
+def export_logs():
+    # 상태와 라인 필터 값 가져오기
+    status = request.args.get('status')  # 상태 필터
+    line = request.args.get('line')  # 라인 필터
+
+    # 전체 로그 데이터 가져오기
+    logs = manager.get_combined_logs()
+
+    if logs is None or len(logs) == 0:
+        print("No logs found!")  # 디버깅 메시지 출력
+        return jsonify({"error": "No data available"}), 500
+
+    # 상태 필터링
+    if status:
+        logs = [log for log in logs if log['STATUS'] == status]
+
+    # 라인 필터링
+    if line:
+        logs = [log for log in logs if log['lineName'] == line]
+
+    print("Filtered Logs:", logs)  # 필터링 후 디버깅 로그 추가
+
+    # CSV 생성 함수
+    def generate_csv():
+        header = ['날짜', '제품 번호', '생산 라인', '점수', '상태']
+        yield '\ufeff' + ','.join(header) + '\n'  # UTF-8 BOM 추가 (Excel 한글 깨짐 방지)
+
+        for log in logs:
+            row = [
+                log['logDate'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(log['logDate'], datetime.datetime) else log['logDate'],
+                str(log['idx']),
+                log['lineName'] or '-',  # lineName이 없을 경우 '-'로 대체
+                str(log['score']) if log['score'] else '-',  # 점수가 없을 경우 '-'로 대체
+                log['STATUS']
+            ]
+            yield ','.join(row) + '\n'
+
+    response = Response(generate_csv(), mimetype='text/csv; charset=utf-8')
+    response.headers.set("Content-Disposition", "attachment; filename=logs.csv")
+    return response
+
+
+
 
 @app.route('/conveyor')
 def conveyor():
@@ -315,11 +429,28 @@ def dashboard():
 
     return render_template('dashboard.html', last_log=last_log)
 
+@app.route('/api/defective_logs', methods=['GET'])
+def fetch_defective_logs():
+    # 불량 로그만 필터링
+    fault_logs = manager.get_faulty_log(today_only=True)
+    normal_logs = manager.get_normal_log(today_only=True)
+
+
+
+    return jsonify({
+        "fault_logs": fault_logs,
+        "fault_total_items": len(fault_logs),
+        "normal_total_items": len(normal_logs),
+    })
+
 @app.route('/analysis')
 def analysis():
     if 'userid' not in session:
         return redirect(url_for('login'))
-    return render_template('analysis.html')
+    lineinfo = manager.get_linetype()
+    
+    return render_template('analysis.html', lineinfo=lineinfo)
+
 
 @app.route('/monitoring')
 def monitoring():

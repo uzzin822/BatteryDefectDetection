@@ -1,13 +1,19 @@
 from argon2 import PasswordHasher
 import mysql.connector
 from argon2.exceptions import VerifyMismatchError, VerificationError
-import requests,time
+import pytz
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import os
 
 load_dotenv() 
 
+
+
 class DBManager:
+    # 한국 표준시 (KST) 타임존 설정
+    kst = pytz.timezone('Asia/Seoul')
+
     def __init__(self):
         self.ph = PasswordHasher()
         self.connection = None
@@ -456,12 +462,12 @@ class DBManager:
         try:
             self.connect()
             if lineIdx:
-                sql = "SELECT linename FROM linetype WHERE lineIdx = %s"
+                sql = "SELECT lineIdx, linename FROM linetype WHERE lineIdx = %s and removed = 0"
                 self.cursor.execute(sql, (lineIdx,))
                 result = self.cursor.fetchone()  # 단일 결과 가져오기
                 return result['linename'] if result else None  # linename 반환, 결과가 없으면 None 반환
             else:
-                sql = "SELECT linename FROM linetype"
+                sql = "SELECT lineIdx, linename FROM linetype where removed = 0"
                 self.cursor.execute(sql)
                 results = self.cursor.fetchall()
                 # 모든 linename을 리스트 형태로 반환
@@ -479,32 +485,85 @@ class DBManager:
     def get_faulty_log(self, faultyIdx=None, today_only=False):
         try:
             self.connect()
+
             if today_only:
-                # 금일 불량 로그 조회(쿼리 최적화 완료)
-                sql = "SELECT * FROM faulty_log WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE() ORDER BY faultyIdx DESC;"
-                self.cursor.execute(sql,)  # 오늘 날짜를 튜플로 전달
+                # 금일 불량 로그 조회
+                sql = """
+                SELECT 
+                    faultyIdx, 
+                    lineIdx, 
+                    faultyScore, 
+                    faultyImage, 
+                    status, 
+                    logDate,
+                    (SELECT linename FROM linetype WHERE linetype.lineIdx = faulty_log.lineIdx) AS linename
+                FROM faulty_log
+                WHERE logDate >= CURDATE() 
+                AND logDate < CURDATE() + INTERVAL 1 DAY
+                ORDER BY logDate DESC;
+                """
+                self.cursor.execute(sql)
 
             elif faultyIdx is not None:
                 # 특정 불량 로그 조회
-                sql = "SELECT * FROM faulty_log WHERE faultyIdx = %s"
-                self.cursor.execute(sql, (faultyIdx,))  # 튜플로 전달
-                
+                sql = """
+                SELECT 
+                    faultyIdx, 
+                    lineIdx, 
+                    faultyScore, 
+                    faultyImage, 
+                    status, 
+                    logDate,
+                    (SELECT linename FROM linetype WHERE linetype.lineIdx = faulty_log.lineIdx) AS linename
+                FROM faulty_log
+                WHERE faultyIdx = %s
+                ORDER BY logDate DESC;
+                """
+                self.cursor.execute(sql, (faultyIdx,))
+                        
             else:
                 # 모든 불량 로그 조회
-                sql = "SELECT * FROM faulty_log ORDER BY logDate, faultyIdx DESC"
+                sql = """
+                SELECT 
+                    faultyIdx AS idx, 
+                    lineIdx, 
+                    faultyScore AS score, 
+                    faultyImage AS image, 
+                    STATUS, 
+                    logDate,
+                    (SELECT linename FROM linetype WHERE linetype.lineIdx = faulty_log.lineIdx) AS lineName
+                FROM faulty_log
+                ORDER BY logDate ASC;
+                """
                 self.cursor.execute(sql)
 
             results = self.cursor.fetchall()
-            # print(f"Query results: {results}")  # 쿼리 결과 출력
-            return results  # 요청 내역 반환
+
+            # logDate를 문자열로 변환
+            formatted_results = []
+            for row in results:
+                row_dict = dict(row)
+                
+                # logDate를 문자열로 변환하여 추가
+                if isinstance(row_dict['logDate'], datetime):
+                    row_dict['logDate'] = row_dict['logDate'].strftime('%Y-%m-%d %H:%M:%S')
+                    
+                formatted_results.append(row_dict)
+
+            return formatted_results
+
         except mysql.connector.Error as error:
             print(f"DB 오류: {str(error)}")
-            return None  # 오류 발생 시 None 반환
+            return None
+
         finally:
             self.disconnect()
 
+
+
+
     # 정상 로그 내역
-    def get_nomal_log(self, normal=None, today_only=False):
+    def get_normal_log(self, normal=None, today_only=False):
         try:
             self.connect()
             if today_only:
@@ -518,7 +577,6 @@ class DBManager:
                 self.cursor.execute(sql)
 
             results = self.cursor.fetchall()
-            print(f"Query results: {results}")  # 쿼리 결과 출력
             return results  # 요청 내역 반환
         except mysql.connector.Error as error:
             print(f"DB 오류: {str(error)}")
@@ -540,6 +598,7 @@ class DBManager:
                         faultyImage AS image, 
                         STATUS, 
                         logDate,
+                        (SELECT linename FROM linetype WHERE linetype.lineIdx = faulty_log.lineIdx) AS lineName,
                         'faulty' AS log_type
                     FROM faulty_log
                     WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE()
@@ -553,6 +612,7 @@ class DBManager:
                         normalImage AS image, 
                         '정상' AS STATUS, 
                         logDate,
+                        (SELECT linename FROM linetype WHERE linetype.lineIdx = normal_log.lineIdx) AS lineName,
                         'normal' AS log_type
                     FROM normal_log
                     WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE()
@@ -568,6 +628,7 @@ class DBManager:
                         faultyImage AS image, 
                         STATUS, 
                         logDate,
+                        (SELECT linename FROM linetype WHERE linetype.lineIdx = faulty_log.lineIdx) AS lineName,
                         'faulty' AS log_type
                     FROM faulty_log
 
@@ -580,6 +641,7 @@ class DBManager:
                         normalImage AS image, 
                         '정상' AS STATUS, 
                         logDate,
+                        (SELECT linename FROM linetype WHERE linetype.lineIdx = normal_log.lineIdx) AS lineName,
                         'normal' AS log_type
                     FROM normal_log
                     ORDER BY logDate DESC, idx DESC;
@@ -596,6 +658,7 @@ class DBManager:
             return None
         finally:
             self.disconnect()
+
 
 
     # 점검 신청
