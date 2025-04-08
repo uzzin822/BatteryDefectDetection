@@ -87,7 +87,7 @@ if (trendCtx) {
     });
 
     // 시간대 선택 이벤트 핸들러
-    document.getElementById('timePeriod').addEventListener('change', function() {
+    document.getElementById('timePeriod').addEventListener('change', function () {
         const period = parseInt(this.value);
         trendChart.data.labels = chartData.trend[period].labels;
         trendChart.data.datasets[0].data = chartData.trend[period].defectData;
@@ -135,9 +135,10 @@ function refreshLogs() {
                         <td>${item.linename}</td>
                         <td>${item.faultyScore}점</td>
                         <td>
-                            ${item.status === '불량(주의)' ? `<span class="x-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">불량(주의)</span>` :
-                              item.status === '불량(심각)' ? `<span class="x-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">불량(심각)</span>` : 
-                              `<span>알 수 없음</span>`}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                            ${item.status === '불량(주의)' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}">
+                            ${item.status}
+                            </span>
                         </td>
                     `;
                     logBody.appendChild(row);
@@ -155,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.message) {
             const logBody = document.getElementById('logBody');
             const identifier = `${data.faultyIdx}-${data.logDate}-${data.linename}`;
-            
+
             const isDuplicate = Array.from(logBody.children).some(row =>
                 row.querySelector('td:nth-child(2)').textContent === `fault_${data.faultyIdx}`
             );
@@ -171,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${data.status}</td>
                 `;
                 logBody.insertBefore(row, logBody.firstChild);
-                
+
                 // 로그 최대 개수 제한
                 if (logBody.children.length > 10) {
                     logBody.removeChild(logBody.lastChild);
