@@ -56,3 +56,7 @@ psutil==6.0.0
 PyYAML==6.0.1
 tqdm==4.66.5
 protobuf==5.29.3
+python-dotenv==1.0.1  # dotenv 추가
+
+# Gunicorn 추가
+gunicorn==20.1.0
