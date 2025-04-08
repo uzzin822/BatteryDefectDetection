@@ -379,3 +379,10 @@ body, html {
       width: 100%;
   }
 }
+.btn{
+  background: #3498db; 
+  color: white; 
+  text-decoration: none; 
+  padding: 8px 16px; 
+  border-radius: 4px; 
+}

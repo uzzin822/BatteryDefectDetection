@@ -398,7 +398,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const randomLine = lines[Math.floor(Math.random() * lines.length)];
         const message = `⚠ 라인 ${randomLine}에서 불량 발생`;
         addAnomalyAlert(message);
-    }, 60000); // 1분마다 실행
+    }, 40000); // 1분마다 실행(테스트용: 40초)
 
 });
 document.addEventListener('DOMContentLoaded', function() {

@@ -247,21 +247,21 @@ function loadLogs() {
                 row.innerHTML = `
                     <td>${log.logDate}</td>
                     <td>
-                        fault_${log.idx}
+                        ${log.STATUS === '정상' ? 'nomal_' : log.STATUS === '불량(주의)' ? 'fault_' :'fault_'}${log.idx}
                     </td>
                     <td>${log.lineName || '-'}</td>
                     <td>${log.score ? `${log.score}점` : '-'}</td>
                     <td>
-                        ${log.STATUS === '불량(심각)' || log.STATUS === '불량(주의)' ? 
-                            `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            ${log.STATUS === '불량(심각)' ? 'bg-red-100 text-red-800' : 
-                            'bg-yellow-100 text-yellow-800'}">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            ${log.STATUS === '정상' ? 'bg-green-100 text-green-800' :
+                        log.STATUS === '불량(주의)' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'}">
                             ${log.STATUS}
-                            </span>` : ''}
+                        </span>
                     </td>
                 `;
 
-                row.onclick = () => window.location.href = `/detail_analysis?faultIdx=${log.idx}`;
+                row.onclick = () => window.location.href = `/detail_analysis?faultyIdx=${log.faultyIdx}&logDate=${encodeURIComponent(log.logDate)}&lineType=${encodeURIComponent(log.linName)}&faultyScore=${log.score}&status=${encodeURIComponent(log.STATUS)}&faultyImage=${encodeURIComponent(faultyImage)}``;
                 tbody.appendChild(row);
             });
 

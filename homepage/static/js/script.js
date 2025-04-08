@@ -232,4 +232,4 @@ setInterval(() => {
 // ⏱️ 1분마다 읽지 않은 메시지 체크
 setInterval(() => {
   checkUnreadMessages();
-}, 60000);
+}, 40000); // 40초마다 체크 (40초로 설정하여 테스트)
