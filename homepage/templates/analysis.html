@@ -108,7 +108,7 @@
     <!-- 불량 및 정상 로그 -->
     <div class="bg-white rounded-lg shadow p-6">
         <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-medium text-gray-900">불량 및 정상 로그</h3>
+            <h3 class="text-lg font-medium text-gray-900">불량 및 정상 로그<small style="font-size: 12px; color: gray; margin-left: 15px;">※불량 로그 클릭 시 불량 상세분석 페이지로 이동합니다.</small></h3>
             <div class="flex items-center space-x-4">
                 <!-- 필터링 드롭다운 -->
                 <select id="statusFilter" class="border rounded px-4 py-1 text-sm min-w-[120px]" onchange="loadLogs()">
@@ -124,7 +124,9 @@
                     {%endfor%}
                 </select>
                 <button id="exportCsv" class="px-3 py-1 bg-blue-600 text-white rounded text-sm">CSV 내보내기</button>
-                <div class="text-sm text-gray-700">총 <span id="totalItems" class="font-medium">97</span>개 항목 중 <span class="font-medium">1-10</span></div>
+                <div class="text-sm text-gray-700">
+                    총 <span id="totalItems" class="font-medium">97</span>개 항목 중 <span id="currentItemRange" class="font-medium">1-10</span>
+                </div>
             </div>
         </div>
         <div class="overflow-x-auto">
