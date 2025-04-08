@@ -135,8 +135,8 @@ function refreshLogs() {
                         <td>${item.linename}</td>
                         <td>${item.faultyScore}점</td>
                         <td>
-                            ${item.status === '불량(주의)' ? `<span class="bg-yellow-100 text-yellow-800">불량(주의)</span>` :
-                              item.status === '불량(심각)' ? `<span class="bg-red-100 text-red-800">불량(심각)</span>` : 
+                            ${item.status === '불량(주의)' ? `<span class="x-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">불량(주의)</span>` :
+                              item.status === '불량(심각)' ? `<span class="x-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">불량(심각)</span>` : 
                               `<span>알 수 없음</span>`}
                         </td>
                     `;
