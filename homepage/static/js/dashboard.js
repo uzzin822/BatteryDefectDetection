@@ -1,3 +1,16 @@
+// 생산라인별 차트 업데이트 함수
+function updateLineChart(period) {
+    lineChart.data.labels = chartData.line[period].labels;
+    lineChart.data.datasets[0].data = chartData.line[period].defectData;
+    lineChart.data.datasets[1].data = chartData.line[period].normalData;
+    lineChart.update();
+}
+
+// 생산라인별 셀렉트 박스 이벤트 추가
+document.getElementById('linePeriod').addEventListener('change', function() {
+    updateLineChart(this.value); // 'day', 'week', 'month' 중 하나 선택
+});
+
 // 차트 데이터 (임시 데이터 유지)
 const chartData = {
     line: {
@@ -28,7 +41,16 @@ const chartData = {
             defectData: [10, 13, 17, 20, 18, 14, 12],
             normalData: [290, 300, 310, 320, 315, 305, 295]
         },
-        // 추가 데이터 생략...
+        12: { // 12시간 데이터 추가
+            labels: ['0시', '2시', '4시', '6시', '8시', '10시', '12시'],
+            defectData: [8, 12, 14, 11, 13, 9, 7],
+            normalData: [280, 290, 300, 295, 310, 305, 300]
+        },
+        24: { // 24시간 데이터 추가
+            labels: ['0시', '4시', '8시', '12시', '16시', '20시', '24시'],
+            defectData: [5, 7, 9, 6, 8, 10, 12],
+            normalData: [270, 280, 290, 285, 300, 310, 320]
+        }
     }
 };
 
