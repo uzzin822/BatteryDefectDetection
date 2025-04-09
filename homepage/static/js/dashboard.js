@@ -174,6 +174,23 @@ function refreshLogs() {
 document.addEventListener('DOMContentLoaded', () => {
     const socket = io();
 
+    // 핵심 기능: 새로운 이미지 수신 및 경고 메시지 숨김
+    socket.on('new_image', function(data) {
+        console.log('new_image 이벤트 수신:', data);
+        if (data.image_path) {
+            const camera1 = document.getElementById("camera1");
+            camera1.src = data.image_path;
+            camera1.style.display = "block"; // 이미지가 로드되면 표시
+            // 이미지가 수신되면 경고 메시지 숨김
+            const warningElement = document.getElementById("camera1-warning");
+            if (warningElement) {
+                warningElement.style.display = "none";
+            } else {
+                console.error('camera1-warning 요소를 찾을 수 없음');
+            }
+        }
+    });
+    
     socket.on('new_alert', function (data) {
         if (data.message) {
             const logBody = document.getElementById('logBody');
@@ -205,3 +222,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     refreshLogs(); // 페이지 로드 시 초기화
 });
+
+
