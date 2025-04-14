@@ -71,7 +71,7 @@
                             value="{{ user_info.userEmail.split('@')[0] }}">
                         <span>@</span>
                         <input type="text" class="form-input" id="emailDomain" name="emailDomain" placeholder="직접 입력"
-                            value="{{ user_info.userEmail.split('@')[1] }}" readonly>
+                            value="{{ user_info.userEmail.split('@')[1] }}" readonly> 
                         <select class="form-input" id="emailExt" style="width: 45%;">
                             <option value="">선택하세요</option>
                             <option value="naver.com" {% if user_info.userEmail.endswith('@naver.com') %}selected{%

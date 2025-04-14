@@ -93,9 +93,9 @@
                 <div class="text-gray-600 text-center" style="grid-column: span 4;">금일 등록된 불량 이미지가 없습니다.</div>
                 {% endif %}
             </div>
-
+ 
             <!-- 불량 이미지 페이징 -->
-            <div class="flex justify-center space-x-5 mt-4 mb-6">
+            <div class="flex justify-center space-x-5 mt-4 mb-6"> 
                 {% if faulty_page > 1 %}
                 <a href="?faulty_page={{ faulty_page - 1 }}&log_page={{ log_page }}&type={{ log_type }}"
                     class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">
