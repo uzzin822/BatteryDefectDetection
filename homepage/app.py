@@ -25,6 +25,14 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 socketio = SocketIO(app)
 
+# @app.before_request
+# def auto_login_for_dev():
+#     if not session.get('userid'):
+#         session['userid'] = 'admin123'
+#         session['username'] = '김관리자'
+#         session['userLevel'] = 1000
+#         session['useEmail'] = 'kim@naver.com'
+
 manager = DBManager()
 ph = PasswordHasher()
 load_dotenv()

@@ -498,8 +498,7 @@ class DBManager:
                     logDate,
                     (SELECT linename FROM linetype WHERE linetype.lineIdx = faulty_log.lineIdx) AS linename
                 FROM faulty_log
-
-                where logDate < CURDATE() AND logDate >= CURDATE() - INTERVAL 1 DAY
+                WHERE logDate >= CURDATE() 
                 AND logDate < CURDATE() + INTERVAL 1 DAY
                 ORDER BY logDate DESC;
                 """
@@ -569,7 +568,7 @@ class DBManager:
             self.connect()
             if today_only:
                 # 금일 불량 로그 조회(쿼리 최적화 완료)
-                sql = "SELECT * FROM normal_log where logDate < CURDATE() AND logDate >= CURDATE() - INTERVAL 1 DAY ORDER BY normalIdx DESC;"
+                sql = "SELECT * FROM normal_log WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE() ORDER BY normalIdx DESC;"
                 self.cursor.execute(sql,)  # 오늘 날짜를 튜플로 전달
 
             else:
@@ -602,7 +601,7 @@ class DBManager:
                         (SELECT linename FROM linetype WHERE linetype.lineIdx = faulty_log.lineIdx) AS lineName,
                         'faulty' AS log_type
                     FROM faulty_log
-                    WHERE logDate < CURDATE() AND logDate >= CURDATE() - INTERVAL 1 DAY
+                    WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE()
 
                     UNION ALL
 
@@ -616,7 +615,7 @@ class DBManager:
                         (SELECT linename FROM linetype WHERE linetype.lineIdx = normal_log.lineIdx) AS lineName,
                         'normal' AS log_type
                     FROM normal_log
-                    WHERE logDate < CURDATE() AND logDate >= CURDATE() - INTERVAL 1 DAY
+                    WHERE logDate < CURDATE() + INTERVAL 1 DAY AND logDate >= CURDATE()
                     ORDER BY logDate DESC, idx DESC;
                 """
             else:
