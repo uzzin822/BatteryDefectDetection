@@ -1,0 +1,143 @@
+/* 불량 상세 분석 페이지 CSS */
+
+/* ============================== */
+/* 메인 콘텐츠 확장 - 전체 폭 */
+/* ============================== */
+/* .main-content {
+  margin-left: 240px;              
+  margin-top: 70px;                   
+  width: calc(100% - 240px);
+  min-height: calc(100vh - 70px);
+  /* padding: 24px 30px;              
+  background: #f9fafb;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+} */
+.main-content {
+  margin-left: 240px;
+  margin-top: 70px;
+  width: calc(100% - 240px);
+  min-height: calc(100vh - 70px);
+  padding: 32px 40px;
+  background: #f9fafb;
+  box-sizing: border-box;
+}
+/* 반응형 */
+@media (max-width: 1024px) {
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+    padding: 24px;
+  }
+}
+
+/* ============================== */
+/* 불량 분석 결과 섹션 상단 간격 줄이기 */
+/* ============================== */
+.main-content > section:first-of-type {
+  margin-top: 0 !important;     /* ✅ 최상단 박스 여백 제거 */
+  padding-top: 0 !important;
+}
+
+  
+/* ============================== */
+/* 바둑판 스타일 유지 및 확장 */
+/* ============================== */
+.defect-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* 반응형 그리드 */
+  gap: 16px; /* 그리드 항목 간의 간격 */
+}
+
+.defect-grid > div {
+  position: relative; /* 자식 요소를 정렬하기 위해 상대 위치 지정 */
+  width: 100%; /* 부모 그리드 셀의 너비를 채움 */
+  padding-top: 100%; /* 세로 길이를 가로 길이와 동일하게 설정 (정사각형 만들기) */
+  overflow: hidden; /* 이미지가 부모 요소를 벗어나지 않도록 */
+  border-radius: 8px; /* 모서리를 둥글게 */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* 그림자 추가 */
+}
+
+.defect-grid > div:hover {
+  opacity: 0.8;
+}
+
+.defect-grid img {
+  position: absolute; /* 부모 요소를 기준으로 정렬 */
+  top: 0;
+  left: 0;
+  width: 100%; /* 가로를 꽉 채우기 */
+  height: 100%; /* 세로를 꽉 채우기 */
+  object-fit: cover; /* 비율을 유지하면서 정사각형에 맞게 자르기 */
+  transition: transform 0.3s ease; /* 호버 시 변형 효과 */
+}
+
+.defect-grid img:hover {
+  transform: scale(1.05); /* 호버 시 확대 효과 */
+}
+
+.defect-grid .info-box {
+   margin-top: 8px;
+   padding: 8px;
+   background-color: white;
+   border-radius: 4px;
+   box-shadow: 0px 1px 3px rgba(0,0,0,0.1);
+}
+
+.defect-grid .info-box p {
+   font-size:14px;
+}
+
+/* ============================== */
+/* 반응형 바둑판 레이아웃 */
+/* ============================== */
+@media (max-width: 1024px) {
+    .defect-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .defect-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .defect-grid img {
+      height: auto; /* 작은 화면에서 최소 높이 설정 */
+    }
+}
+
+  /* ============================== */
+  /* 상세 정보 스타일 */
+  /* ============================== */
+  #defect-details {
+    font-size: 16px;
+  }
+  
+  #defect-details .text-gray-600 {
+    color: #666;
+  }
+  
+  #defect-details span {
+    font-weight: 500;
+  }
+  
+  #detail-level.text-red-500 {
+    color: #e74c3c;
+  }
+  
+  #detail-level.text-yellow-500 {
+    color: #f1c40f;
+  }
+  
+  /* ============================== */
+  /* 버튼 스타일 */
+  /* ============================== */
+  button {
+    transition: background-color 0.3s, transform 0.2s;
+  }
+  
+  button:hover {
+    background-color: #e2e8f0;
+    transform: translateY(-1px);
+  }

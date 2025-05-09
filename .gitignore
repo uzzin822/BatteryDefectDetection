@@ -1,0 +1,12 @@
+venv/
+yolov8_battery_detection.pt
+cnn_defect_classification.h5
+unet_defect_visualization.h5
+yolo_B.mp4
+yolo_C.mp4
+yolo_D.mp4
+.env
+env
+
+*.mp4
+*.jpg

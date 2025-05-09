@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}불량 분석{% endblock %}
+
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"/>
+<link href="https://ai-public.creatie.ai/gen_page/tailwind-custom.css" rel="stylesheet"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/analysis.css') }}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<script src="https://cdn.tailwindcss.com/3.4.5?plugins=forms@0.5.7,typography@0.5.13,aspect-ratio@0.4.2,container-queries@0.1.1"></script>
+<script src="https://ai-public.creatie.ai/gen_page/tailwind-config.min.js" data-color="#000000" data-border-radius="small"></script>
+<script src="{{ url_for('static', filename='js/analysis.js') }}" defer></script>
+<style>
+/* 로그 테이블 스타일 직접 추가 */
+.log-table {
+    width: 100%;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    border-collapse: collapse;
+}
+
+.log-table th, .log-table td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    font-size: 14px;
+    color: #555;
+}
+
+.log-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.log-table tr:hover {
+    background: #f1f3f5;
+}
+.pagination {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+
+.btn:hover {
+    background-color: #eee;
+    color: #000;
+}
+
+/* 기본 버튼 스타일 */
+.pagination button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background-color: white;
+    color: #374151; /* 기본 글씨 색상 */
+}
+
+/* 활성화된 버튼 스타일 */
+.pagination button.btn-active {
+    background-color: black; /* 파란색 배경 */
+    color: white; /* 흰색 글씨 */
+    border-color: black;
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <link href="https://ai-public.creatie.ai/gen_page/tailwind-custom.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.5?plugins=forms@0.5.7,typography@0.5.13,aspect-ratio@0.4.2,container-queries@0.1.1"></script>
+    <script src="https://ai-public.creatie.ai/gen_page/tailwind-config.min.js" data-color="#000000" data-border-radius="small"></script>
+</head>
+
+<main class="main-content">
+    <!-- 차트 컨테이너 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="chart-header">
+                <h3>생산라인별 불량률 및 정상률</h3>
+                <select id="lineChartPeriod">
+                    <option value="daily">일간</option>
+                    <option value="weekly">주간</option>
+                    <option value="monthly">월간</option>
+                </select>
+            </div>
+            <div id="lineChart" style="height: 400px;"></div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="chart-header">
+                <h3>불량률 및 정상률 추이</h3>
+                <select id="barChartPeriod">
+                    <option value="daily">일간</option>
+                    <option value="weekly">주간</option>
+                    <option value="monthly">월간</option>
+                </select>
+            </div>
+            <div id="barChart" style="height: 400px;"></div>
+        </div>
+    </div>
+
+    <!-- 불량 및 정상 로그 -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-medium text-gray-900">불량 및 정상 로그<small style="font-size: 12px; color: gray; margin-left: 15px;">※불량 로그 클릭 시 불량 상세분석 페이지로 이동합니다.</small></h3>
+            <div class="flex items-center space-x-4">
+                <!-- 필터링 드롭다운 -->
+                <select id="statusFilter" class="border rounded px-4 py-1 text-sm min-w-[120px]" onchange="loadLogs()">
+                    <option value="">상태: 전체</option>
+                    <option value="정상">정상</option>
+                    <option value="불량(주의)">불량(주의)</option>
+                    <option value="불량(심각)">불량(심각)</option>
+                </select>
+                <select id="lineFilter" class="border rounded px-4 py-1 text-sm min-w-[120px]" onchange="loadLogs()">
+                    <option value="">라인: 전체</option>
+                    {% for line in lineinfo %}
+                        <option value="{{ line }}">{{ line }}</option>
+                    {%endfor%}
+                </select>
+                <button id="exportCsv" class="px-3 py-1 bg-blue-600 text-white rounded text-sm">CSV 내보내기</button>
+                <div class="text-sm text-gray-700">
+                    총 <span id="totalItems" class="font-medium">97</span>개 항목 중 <span id="currentItemRange" class="font-medium">1-10</span>
+                </div>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 log-table" id="logTable">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">날짜</th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">제품 번호</th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">생산라인</th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">점수</th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBody" class="bg-white divide-y divide-gray-200">
+                    <!-- JavaScript로 동적 추가 -->
+                </tbody>
+            </table>
+        </div>
+        <!-- <div class="mt-4 flex items-center justify-between">
+            <div class="flex space-x-2 justify-center w-full mt-8">
+                <button id="prevPage" class="px-3 py-1 border rounded text-sm">이전</button>
+                <span id="paginationInfo" class="px-3 py-1 bg-custom text-white rounded text-sm">1</span>
+                <button id="nextPage" class="px-3 py-1 border rounded text-sm">다음</button>
+            </div>
+        </div> -->
+        <div id="paginationContainer" class="pagination"></div>
+
+
+        
+    </div>
+</main>
+
+<script>
+</script>
+{% endblock %}

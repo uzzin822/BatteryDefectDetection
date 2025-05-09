@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+
+{% block title %}실시간 모니터링{% endblock %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/monitoring.css') }}">
+<script src="{{ url_for('static', filename='js/monitoring.js') }}" defer></script>
+
+{% block content %}
+<style>
+/* 기본 설정 */
+body {
+    margin: 0;
+    padding: 0;
+}
+
+/* 모니터링 컨테이너 */
+.monitoring-container {
+    width: 100%;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 25px;
+}
+
+/* 모니터링 헤더 */
+.monitoring-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.monitoring-title-group {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.monitoring-title {
+    font-size: 24px;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.current-datetime {
+    font-size: 18px;
+    color: #495057;
+    font-weight: 700;
+}
+
+/* 컨트롤 버튼 그룹 */
+.monitoring-controls {
+    display: flex;
+    gap: 12px;
+}
+
+.control-btn {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    background: #fff;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.control-btn:hover {
+    background: #f8f9fa;
+    border-color: #dee2e6;
+    transform: translateY(-2px);
+}
+
+.control-btn.active {
+    background: #3498db;
+    color: white;
+    border-color: #3498db;
+}
+
+/* 카메라 레이아웃 */
+.camera-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2x2 정렬 */
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+/* 카메라 피드 */
+.camera-feed {
+    position: relative;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    aspect-ratio: 16/9; /* 16:9 비율 유지 */
+    width: 100%; /* 가득 차게 */
+    height: 100%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.camera-feed video, .camera-feed img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 카메라 정보 */
+.camera-info {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.75);
+    padding: 10px 15px;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}
+
+/* 경고 메시지 스타일 */
+.camera-warning {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(231, 76, 60, 0.9);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    z-index: 10;
+    display: block; /* 디폴트로 표시 */
+}
+
+/* 카메라 컨트롤 버튼 */
+.camera-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    gap: 12px;
+}
+
+.camera-control-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.75);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease-in-out;
+    backdrop-filter: blur(4px);
+    font-size: 16px;
+}
+
+.camera-control-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.1);
+}
+
+/* 알림 패널 */
+.alert-panel {
+    background: #fff;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+}
+
+/* 알림 리스트 */
+.alert-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 0 5px;
+}
+
+.alert-header h3 {
+    font-size: 18px;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+/* 스크롤 스타일 */
+.alert-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.alert-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.alert-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.alert-list::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+}
+
+/* 개별 알림 스타일 */
+.alert-item {
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #edf2f7;
+    transition: background-color 0.2s ease-in-out;
+    cursor: pointer;
+}
+
+.alert-item:hover {
+    background: #f8f9fa;
+}
+
+.alert-item:last-child {
+    border-bottom: none;
+}
+.alert-message{
+    font-size: 18px;
+    color: black;
+    margin-left: 15px;
+}
+
+.alert-type {
+    color: #e74c3c;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.alert-time {
+    color: #000000;
+    font-size: 18px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1400px) {
+    .monitoring-container {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 1024px) {
+    .camera-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        padding: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .monitoring-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .monitoring-controls {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .alert-panel {
+        width: 100%;
+    }
+}
+</style>
+
+<head>
+    <!-- SocketIO 클라이언트 라이브러리 로드 -->
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js"></script>
+</head>
+
+<div class="monitoring-container">
+    <div class="monitoring-header">
+        <div class="monitoring-title-group">
+            <h2 class="monitoring-title">실시간 라인별 생산화면</h2>
+            <div class="current-datetime" id="currentDateTime"></div>
+        </div>
+        <div class="monitoring-controls">
+            <!-- 그리드 레이아웃 변경 버튼 -->
+            <button class="control-btn active" onclick="setGridLayout(2)">2x2</button>
+            <button class="control-btn" onclick="setGridLayout(1)">1x1</button>
+        </div>
+    </div>
+
+    <div class="camera-grid" id="cameraGrid">
+        <!-- 라인 A -->
+        <div class="camera-feed">
+            <!-- 실시간 카메라 피드 이미지 -->
+            <img id="camera1" src="" alt="라인 A" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none';">
+            <div class="camera-info">
+                <!-- 카메라 상태 표시 제거, 라인 이름만 표시 -->
+                라인 A - 메인
+            </div>
+            <!-- 경고 메시지 표시 영역 -->
+            <div id="camera1-warning" class="camera-warning">
+                카메라 연결을 준비하고 있습니다.
+            </div>
+            <div class="camera-controls">
+                <!-- 비디오 재생/일시정지 및 풀스크린 버튼 -->
+                <button class="camera-control-btn" onclick="togglePlay(this)">⏯️</button>
+                <button class="camera-control-btn" onclick="toggleFullScreen(this)">⛶</button>
+            </div>
+        </div>
+
+        <!-- 라인 B -->
+        <div class="camera-feed">
+            <video id="camera2" autoplay muted loop>
+                <source src="{{ url_for('static', filename='videos/yolo_B.mp4') }}" type="video/mp4">
+            </video>
+            <div class="camera-info">
+                라인 B - 메인
+            </div>
+            <div class="camera-controls">
+                <button class="camera-control-btn" onclick="togglePlay(this)">⏯️</button>
+                <button class="camera-control-btn" onclick="toggleFullScreen(this)">⛶</button>
+            </div>
+        </div>
+
+        <!-- 라인 C -->
+        <div class="camera-feed">
+            <video id="camera3" autoplay muted loop>
+                <source src="{{ url_for('static', filename='videos/yolo_C.mp4') }}" type="video/mp4">
+            </video>
+            <div class="camera-info">
+                라인 C - 메인
+            </div>
+            <div class="camera-controls">
+                <button class="camera-control-btn" onclick="togglePlay(this)">⏯️</button>
+                <button class="camera-control-btn" onclick="toggleFullScreen(this)">⛶</button>
+            </div>
+        </div>
+
+        <!-- 라인 D -->
+        <div class="camera-feed">
+            <video id="camera4" autoplay muted loop>
+                <source src="{{ url_for('static', filename='videos/yolo_D.mp4') }}" type="video/mp4">
+            </video>
+            <div class="camera-info">
+                라인 D - 메인
+            </div>
+            <div class="camera-controls">
+                <button class="camera-control-btn" onclick="togglePlay(this)">⏯️</button>
+                <button class="camera-control-btn" onclick="toggleFullScreen(this)">⛶</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 알림 패널 -->
+<div class="alert-panel">
+    <div class="alert-header"> 
+        <h3>실시간 알림</h3>
+    </div>
+    <div class="alert-list" id="alerts">
+        <!-- JavaScript로 동적 추가 -->
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const alertList = document.getElementById("alerts"); // 알림 리스트 컨테이너
+
+    // 📌 실시간 알림 추가 함수
+    function addAnomalyAlert(message) {
+        const alertItem = document.createElement("div");
+        alertItem.className = "alert-item"; // CSS 클래스 추가
+        const now = new Date();
+        const formattedTime = now.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+
+        alertItem.innerHTML = `
+            <span class="alert-time">${formattedTime}</span>
+            <span class="alert-message">${message}</span>
+        `;
+        alertList.prepend(alertItem); // 새 알림을 맨 위에 추가
+    }
+
+    // 📌 테스트용 랜덤 메시지 생성
+    setInterval(() => {
+        const lines = ["A", "B", "C", "D"];
+        const randomLine = lines[Math.floor(Math.random() * lines.length)];
+        const message = `⚠ 라인 ${randomLine}에서 불량 발생`;
+        addAnomalyAlert(message);
+    }, 40000); // 1분마다 실행(테스트용: 40초)
+
+});
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('monitoring.html JavaScript 초기화 시작');
+
+    try {
+        // 핵심 기능: 날짜/시간 업데이트
+        function updateDateTime() {
+            const now = new Date();
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const dayOfWeek = days[now.getDay()];
+            let hours = now.getHours();
+            const ampm = hours >= 12 ? '오후' : '오전';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            const dateTimeStr = now.getFullYear() + '. ' +
+                String(now.getMonth() + 1).padStart(2, '0') + '. ' +
+                String(now.getDate()).padStart(2, '0') + ' (' + dayOfWeek + ') ' +
+                ampm + ' ' +
+                String(hours).padStart(2, '0') + ': ' +
+                String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('currentDateTime').textContent = dateTimeStr;
+        }
+
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        // 핵심 기능: 카메라 그리드 레이아웃 변경
+        window.setGridLayout = function(cols) {
+            const grid = document.getElementById('cameraGrid');
+            grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            document.querySelectorAll('.control-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        };
+
+        // 핵심 기능: 카메라 재생/일시정지
+        window.togglePlay = function(btn) {
+            const video = btn.closest('.camera-feed').querySelector('video');
+            if (video) {
+                if (video.paused) {
+                    video.play();
+                    btn.innerHTML = '⏯️';
+                } else {
+                    video.pause();
+                    btn.innerHTML = '▶️';
+                }
+            }
+        };
+
+        // 핵심 기능: 카메라 풀스크린
+        window.toggleFullScreen = function(btn) {
+            const feed = btn.closest('.camera-feed');
+            if (!document.fullscreenElement) {
+                feed.requestFullscreen().catch(err => {
+                    console.log('전체화면 전환 중 오류 발생:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        };
+
+        // 핵심 기능: 웹소켓 연결
+        const socket = io();
+
+        // SocketIO 연결 상태 확인
+        socket.on('connect', function() {
+            console.log('SocketIO 연결 성공');
+        });
+
+        socket.on('connect_error', function(error) {
+            console.error('SocketIO 연결 실패:', error);
+        });
+
+        socket.on('disconnect', function() {
+            console.log('SocketIO 연결 끊김');
+        });
+
+        // 핵심 기능: 새로운 이미지 수신 및 경고 메시지 숨김
+        socket.on('new_image', function(data) {
+            console.log('new_image 이벤트 수신:', data);
+            if (data.image_path) {
+                const camera1 = document.getElementById("camera1");
+                camera1.src = data.image_path;
+                camera1.style.display = "block"; // 이미지가 로드되면 표시
+                // 이미지가 수신되면 경고 메시지 숨김
+                const warningElement = document.getElementById("camera1-warning");
+                if (warningElement) {
+                    warningElement.style.display = "none";
+                } else {
+                    console.error('camera1-warning 요소를 찾을 수 없음');
+                }
+            }
+        });
+
+        // 핵심 기능: 새로운 알림 수신 및 알림 패널에 추가
+        socket.on('new_alert', function(data) {
+            console.log('new_alert 이벤트 수신:', data);
+            if (data.message) {
+                const alerts = document.getElementById('alerts');
+                const alertItem = document.createElement('div');
+                alertItem.className = 'alert-item';
+                const time = new Date().toLocaleTimeString('ko-KR');
+                alertItem.innerHTML = `
+                    <span class="alert-type">${data.message} (점수: ${data.fault_score}, 위치: ${data.fault_location})</span>
+                    <span class="alert-time">${time}</span>
+                `;
+                alertItem.onclick = () => window.location.href = `/detail-analysis?id=${data.alertId || 'unknown'}`;
+                alerts.prepend(alertItem);
+
+                // 알림 최대 5개로 제한
+                const alertItems = alerts.querySelectorAll('.alert-item');
+                if (alertItems.length > 5) {
+                    alertItems[alertItems.length - 1].remove();
+                }
+            }
+        });
+
+        // 핵심 기능: 카메라 피드 자동 새로고침 (라인 B, C, D 비디오용)
+        window.reloadCameraFeeds = function() {
+            document.querySelectorAll('video').forEach(video => {
+                const currentTime = video.currentTime;
+                video.src = video.src;
+                video.load();
+                video.currentTime = currentTime;
+                video.play();
+            });
+        };
+
+        setInterval(reloadCameraFeeds, 300000);
+
+        console.log('monitoring.html JavaScript 초기화 완료');
+    } catch (error) {
+        console.error('JavaScript 실행 중 오류 발생:', error);
+    }
+});
+</script>
+{% endblock %}

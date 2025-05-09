@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}불량 상세분석{% endblock %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/detail-analysis.css') }}">
+{% block content %}
+
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link href="https://ai-public.creatie.ai/gen_page/tailwind-custom.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+    <script
+        src="https://cdn.tailwindcss.com/3.4.5?plugins=forms@0.5.7,typography@0.5.13,aspect-ratio@0.4.2,container-queries@0.1.1"></script>
+    <script src="https://ai-public.creatie.ai/gen_page/tailwind-config.min.js" data-color="#000000"
+        data-border-radius="small"></script>
+    <script src="{{ url_for('static', filename='js/detail-analysis.js') }}" defer></script>
+</head>
+
+<main>
+    <div class="bg-white shadow-sm rounded-lg p-6 w-full max-w-full">
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center space-x-4">
+                <button class="text-gray-600 hover:text-custom" onclick="history.back()">
+                    <i class="fas fa-arrow-left mr-2"></i>돌아가기
+                </button>
+            </div>
+            <div class="flex space-x-4">
+                <button class="text-custom hover:text-custom/80">
+                    <i class="fas fa-download mr-2"></i>보고서 다운로드
+                </button>
+            </div>
+        </div>
+
+        <div class="detail-log" id="defect-detail" style="display: none;">
+            <div class="detail-list">
+                <h1 class="text-2xl font-semibold mb-6">불량 분석 결과</h1>
+                <div class="text-gray-600 mb-6">AI 분석을 통해 검출된 제품의 불량 상세 정보입니다.</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-gray-100 p-4 rounded-lg shadow-sm relative">
+                        <img id="main-defect-image" src="https://picsum.photos/400/400?random=1" alt="불량 이미지"
+                            class="w-full h-[400px] object-cover rounded" />
+                    </div>
+                    <div class="bg-white p-6 rounded-lg border shadow-sm">
+                        <h2 class="text-lg font-medium mb-4" style="margin-top:50px;">불량 상세 정보</h2>
+                        <div class="space-y-4" id="defect-details">
+                            <div class="flex justify-between"><span class="text-gray-600 mr-1">불량번호: </span><span
+                                    id="detail-faultyIdx"></span></div>
+                            <div class="flex justify-between"><span class="text-gray-600 mr-1">날짜: </span><span
+                                    id="detail-date"></span></div>
+                            <div class="flex justify-between"><span class="text-gray-600 mr-1">생산 라인: </span><span
+                                    id="detail-line"></span></div>
+                            <div class="flex justify-between"><span class="text-gray-600 mr-1">불량 점수: </span><span
+                                    id="detail-score"></span></div>
+                            <div class="flex justify-between"><span class="text-gray-600 mr-1">심각도: </span><span
+                                    id="detail-status" class="text-red-500"></span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 불량 이미지 목록 -->
+        <div class="mt-8 border-t pt-6">
+            <h2 class="text-xl font-semibold mb-4">금일 불량 이미지 목록</h2>
+            <div class="grid grid-cols-4 gap-6 mb-6 border p-4 rounded-lg bg-gray-50 defect-grid" id="defect-images">
+                {% if today_faulty_logs %}
+                {% for log in today_faulty_logs %}
+                <div class="showdetail cursor-pointer hover:opacity-80" data-index="{{ loop.index0 }}">
+                    <a href="javascript:void(0);" onclick='showDefectDetails(
+                        {{ log.faultyIdx }},
+                        {{ log.logDate | tojson }},
+                        {{ log.lineType | tojson }},
+                        {{ log.faultyScore }},
+                        {{ log.status | tojson }},
+                        "{{ log.faultyImage }}"
+                    )'>
+                        <img src="{{ log.faultyImage }}" alt="불량 이미지 {{ log.faultyIdx }}"
+                            class="w-full h-48 object-cover rounded-lg shadow-sm" />
+                    </a>
+                    <div class="info-box mt-2">
+                        <p class="text-sm text-gray-700">불량번호: fault_{{ log.faultyIdx }}</p>
+                        <p class="text-sm text-gray-700">날짜: {{ log.logDate }}</p>
+                        <p class="text-sm text-gray-700">생산라인: {{ log.lineType }}</p>
+                        <p class="text-sm text-gray-700">불량점수: {{ log.faultyScore }}</p>
+                        {% if log.status == "불량(심각)" %}
+                        <p class="text-sm text-red-500">불량(심각)</p>
+                        {% elif log.status == "불량(주의)" %}
+                        <p class="text-sm text-orange-500">불량(주의)</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-gray-600 text-center" style="grid-column: span 4;">금일 등록된 불량 이미지가 없습니다.</div>
+                {% endif %}
+            </div>
+ 
+            <!-- 불량 이미지 페이징 -->
+            <div class="flex justify-center space-x-5 mt-4 mb-6"> 
+                {% if faulty_page > 1 %}
+                <a href="?faulty_page={{ faulty_page - 1 }}&log_page={{ log_page }}&type={{ log_type }}"
+                    class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">
+                    <i class="fas fa-chevron-left"></i> 이전
+                </a>
+                {% endif %}
+                {% if faulty_page < total_pages_faulty %} <a
+                    href="?faulty_page={{ faulty_page + 1 }}&log_page={{ log_page }}&type={{ log_type }}"
+                    class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">
+                    다음 <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% endif %}
+            </div> 
+        </div>
+
+        <!-- 금일 정상 및 불량 로그 -->
+        <div class="bg-white rounded-lg border shadow-sm p-4">
+            <h3 class="text-lg font-medium mb-3">금일 정상 및 불량 로그<small class="text-gray-500"
+                    style="margin-left: 10px;">(총: {{ total_logs }}건)</small></h3>
+
+            <div class="flex space-x-4 mb-6">
+                <button id="all-logs-btn"
+                    class="px-6 py-2 rounded-lg border text-gray-700 {{ 'bg-gray-200' if log_type == 'all' else 'hover:bg-gray-100 border-gray-300' }}"
+                    onclick="filterLogs('all')">전체</button>
+
+                <button id="normal-logs-btn"
+                    class="px-6 py-2 rounded-lg border text-gray-700 {{ 'bg-gray-200' if log_type == 'normal' else 'hover:bg-gray-100 border-gray-300' }}"
+                    onclick="filterLogs('normal')">정상</button>
+
+                <button id="faulty-logs-btn"
+                    class="px-6 py-2 rounded-lg border text-gray-700 {{ 'bg-gray-200' if log_type == 'faulty' else 'hover:bg-gray-100 border-gray-300' }}"
+                    onclick="filterLogs('faulty')">불량</button>
+            </div>
+
+
+            <div id="logs-container">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200" id="logs-table">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th
+                                    class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    No.</th>
+                                <th
+                                    class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    불량번호</th>
+                                <th
+                                    class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    시간</th>
+                                <th
+                                    class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    생산 라인</th>
+                                <th
+                                    class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    불량 점수</th>
+                                <th
+                                    class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    심각도</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for log in today_combined_logs %}
+                            <tr>
+                                <!-- No. -->
+                                <td class="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-500">{{ loop.index
+                                    }}</td>
+
+                                <!-- 불량번호 -->
+                                <td class="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-500">
+                                    {% if log.log_type == "faulty" %}
+                                    fault_{{ log.idx }}
+                                    {% elif log.log_type == "normal" %}
+                                    normal_{{ log.idx }}
+                                    {% endif %}
+                                </td>
+
+                                <!-- 시간 -->
+                                <td class="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-500">{{ log.logDate
+                                    }}</td>
+
+                                <!-- 생산 라인 -->
+                                <td class="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-500">{{
+                                    log.lineType}}</td>
+
+                                <!-- 불량 점수 -->
+                                <td class="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-500">
+                                    {% if log.log_type == "faulty" %}
+                                    {{ log.score }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+
+                                <!-- 심각도 -->
+                                <td class="px-6 py-4 text-center whitespace-nowrap">
+                                    {% if log.log_type == "faulty" %}
+                                    {% if log.STATUS == "불량(심각)" %}
+                                    <span
+                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                        불량(심각)
+                                    </span>
+                                    {% elif log.STATUS == "불량(주의)" %}
+                                    <span
+                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        불량(주의)
+                                    </span>
+                                    {% endif %}
+                                    {% elif log.log_type == "normal" %}
+                                    <span
+                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        정상
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            <!-- 데이터가 없는 경우 -->
+                            {% if not today_combined_logs %}
+                            <tr>
+                                <td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    style="text-align: center;">
+                                    금일 등록된 로그가 없습니다.
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+
+            <!-- 정상 및 불량 로그 페이징 -->
+            <div class="flex justify-center space-x-5 mt-4 mb-6">
+                <!-- 이전 페이지 버튼 -->
+                {% if log_page > 1 %}
+                <a href="/detail-analysis?faulty_page={{ faulty_page }}&log_page={{ log_page - 1 }}&type={{ log_type }}"
+                    class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">
+                    <i class="fas fa-chevron-left"></i> 이전
+                </a>
+                {% endif %}
+
+                <!-- 페이지 번호 버튼 -->
+                {% for i in range(1, total_pages_combined + 1) %}
+                <a href="/detail-analysis?faulty_page={{ faulty_page }}&log_page={{ i }}&type={{ log_type }}"
+                    class="px-4 py-2 {{ 'bg-gray-300' if i == log_page else 'bg-white' }} hover:bg-gray-200 rounded-lg">
+                    {{ i }}
+                </a>
+                {% endfor %}
+
+                <!-- 다음 페이지 버튼 -->
+                {% if log_page < total_pages_combined %} <a
+                    href="/detail-analysis?faulty_page={{ faulty_page }}&log_page={{ log_page + 1 }}&type={{ log_type }}"
+                    class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">
+                    다음 <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% endif %}
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg border shadow-sm p-4 mt-6">
+            <h3 class="text-lg font-medium mb-3">CAPA 관리</h3>
+            <form class="space-y-4">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <select class="rounded-md border-gray-300">
+                        <option>시정</option>
+                        <option>예방</option>
+                    </select>
+                    <input type="date" class="rounded-md border-gray-300" />
+                </div>
+                <div>
+                    <textarea class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" rows="4"
+                        placeholder="조치 내용을 입력하세요"></textarea>
+                </div>
+                <div class="mt-3">
+                    <input type="text" class="block w-full rounded-md border-gray-300 bg-gray-100" placeholder="담당자명"
+                        disabled="true" value="김관리자" />
+                </div>
+                <div class="mt-3">
+                    <button type="submit"
+                        class="w-full bg-custom text-white rounded-md hover:bg-custom/90 py-2 mt-4">제출</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="mt-6 bg-gray-50 p-4 rounded-lg">
+            <h3 class="text-lg font-medium mb-3">법적 참고사항</h3>
+            <ul class="space-y-2 text-gray-600">
+                <li>• 결함 보고: 24시간 이내 품질관리자 보고 의무</li>
+                <li>• 문서 보관: 5년간 기록 보관 (ISO 9001)</li>
+                <li>• 리콜 기준: 심각도 '상' 시 즉시 검토 (KC 인증)</li>
+            </ul>
+        </div>
+    </div>
+</main>
+{% endblock %}

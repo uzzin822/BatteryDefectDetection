@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>컨베이어 벨트</title>
+    <style>
+        /* 기본 설정 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', '맑은 고딕', sans-serif;
+            background-color: #f4f6f8;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+
+        /* 컨베이어 벨트 컨테이너 */
+        .conveyor-container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px auto 0;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+        }
+
+        /* 컨베이어 벨트 헤더 */
+        .conveyor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .conveyor-title {
+            font-size: 24px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .current-datetime {
+            font-size: 18px;
+            color: #495057;
+            font-weight: 700;
+        }
+
+        /* 컨베이어 벨트 영상 */
+        .conveyor-feed {
+            position: relative;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            aspect-ratio: 16/9; /* 16:9 비율 유지 */
+            width: 100%;
+            height: 100%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .conveyor-feed video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 컨베이어 벨트 정보 */
+        .conveyor-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            backdrop-filter: blur(4px);
+        }
+
+        .conveyor-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #2ecc71;
+            box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+        }
+
+        /* 컨베이어 벨트 컨트롤 버튼 */
+        .conveyor-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .conveyor-control-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.75);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease-in-out;
+            backdrop-filter: blur(4px);
+            font-size: 16px;
+        }
+
+        .conveyor-control-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: scale(1.1);
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 1024px) {
+            .conveyor-container {
+                max-width: 100%;
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .conveyor-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .conveyor-title {
+                font-size: 20px;
+            }
+
+            .current-datetime {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="conveyor-container">
+        <div class="conveyor-header">
+            <h2 class="conveyor-title">Conveyor Belt</h2>
+            <div class="current-datetime" id="currentDateTime"></div>
+        </div>
+
+        <div class="conveyor-feed">
+            <video id="conveyor-video" autoplay loop muted>
+                <source src="{{ url_for('static', filename='videos/conveyor_video.mp4') }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <div class="conveyor-info">
+                <span class="conveyor-status"></span>
+                컨베이어 벨트 - 메인
+            </div>
+            <div class="conveyor-controls">
+                <button class="conveyor-control-btn" onclick="togglePlay(this)">⏯️</button>
+                <button class="conveyor-control-btn" onclick="toggleFullScreen(this)">⛶</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 날짜/시간 업데이트
+            function updateDateTime() {
+                const now = new Date();
+                const days = ['일', '월', '화', '수', '목', '금', '토'];
+                const dayOfWeek = days[now.getDay()];
+                let hours = now.getHours();
+                const ampm = hours >= 12 ? '오후' : '오전';
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                const dateTimeStr = now.getFullYear() + '. ' +
+                    String(now.getMonth() + 1).padStart(2, '0') + '. ' +
+                    String(now.getDate()).padStart(2, '0') + ' (' + dayOfWeek + ') ' +
+                    ampm + ' ' +
+                    String(hours).padStart(2, '0') + ': ' +
+                    String(now.getMinutes()).padStart(2, '0');
+                document.getElementById('currentDateTime').textContent = dateTimeStr;
+            }
+
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+
+            // 컨베이어 벨트 영상 제어
+            let isPlaying = true;
+            function controlConveyor() {
+                const video = document.getElementById("conveyor-video");
+                if (isPlaying) {
+                    video.play();
+                } else {
+                    video.pause();
+                }
+            }
+
+            // 스크롤 상태 확인
+            function checkScrollStatus() {
+                fetch("/api/pause-scroll", { method: "POST" })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === "paused") {
+                            isPlaying = false;
+                        }
+                    })
+                    .catch(error => console.error("Error fetching pause-scroll:", error));
+
+                fetch("/api/resume-scroll", { method: "POST" })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === "resumed") {
+                            isPlaying = true;
+                        }
+                    })
+                    .catch(error => console.error("Error fetching resume-scroll:", error));
+
+                controlConveyor();
+            }
+
+            // 1초마다 스크롤 상태 확인
+            setInterval(checkScrollStatus, 1000);
+
+            // 영상 재생/일시정지
+            window.togglePlay = function(btn) {
+                const video = btn.closest('.conveyor-feed').querySelector('video');
+                if (video.paused) {
+                    video.play();
+                    btn.innerHTML = '⏯️';
+                    isPlaying = true;
+                } else {
+                    video.pause();
+                    btn.innerHTML = '▶️';
+                    isPlaying = false;
+                }
+            };
+
+            // 영상 풀스크린
+            window.toggleFullScreen = function(btn) {
+                const feed = btn.closest('.conveyor-feed');
+                if (!document.fullscreenElement) {
+                    feed.requestFullscreen().catch(err => {
+                        console.log('전체화면 전환 중 오류 발생:', err);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            };
+        });
+    </script>
+</body>
+</html>

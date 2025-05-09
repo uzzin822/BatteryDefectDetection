@@ -1,0 +1,68 @@
+import os
+import numpy as np
+import cv2
+from io import BytesIO
+from PIL import Image
+import base64
+from flask import Flask, render_template, request
+from tensorflow.keras.models import load_model
+from werkzeug.utils import secure_filename
+
+app = Flask(__name__)
+
+model = load_model("fine_tuned_unet_mobilenet_alpha08.h5", compile=False)
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# 예측 및 결과 이미지를 base64로 반환
+def predict_and_get_base64(image):
+    img = cv2.imdecode(np.frombuffer(image.read(), np.uint8), cv2.IMREAD_COLOR)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    original_size = img.shape[:2]
+
+    img_resized = cv2.resize(img, (224, 224)).astype(np.float32) / 255.0
+
+    pred_mask = model.predict(np.expand_dims(img_resized, axis=0))[0]
+    pred_mask = (pred_mask > 0.51).astype(np.uint8)
+
+    defect_ratio = np.sum(pred_mask) / (224 * 224)
+    defect_score = min(defect_ratio * 10000, 100)
+
+    # 마스크를 원본 사이즈로 복원
+    pred_mask_resized = cv2.resize(pred_mask[:, :, 0], (original_size[1], original_size[0]), interpolation=cv2.INTER_NEAREST)
+
+    overlay = img.copy()
+    overlay[pred_mask_resized == 1] = [255, 0, 0]
+
+    # 결과를 base64로 변환
+    pil_img = Image.fromarray(overlay)
+    buf = BytesIO()
+    pil_img.save(buf, format='PNG')
+    byte_data = buf.getvalue()
+    base64_str = base64.b64encode(byte_data).decode('utf-8')
+
+    return defect_score, base64_str
+
+# 라우팅
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        uploaded_files = request.files.getlist("file")
+        results = []
+
+        for file in uploaded_files:
+            if file and allowed_file(file.filename):
+                defect_score, overlay_base64 = predict_and_get_base64(file)
+                results.append({
+                    'score': round(defect_score, 1),
+                    'overlay': overlay_base64
+                })
+
+        return render_template('index.html', results=results)
+
+    return render_template('index.html')
+
+if __name__ == '__main__':
+    app.run(debug=True)

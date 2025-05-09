@@ -1,0 +1,210 @@
+/* ============================== */
+/* 공통 기본 스타일 */
+/* ============================== */
+body {
+    font-family: 'Pretendard', '맑은 고딕', sans-serif;
+    background: #f9fafb;
+    color: #1f2937;
+    line-height: 1.6;
+  }
+  
+  .main-content {
+  margin-top: 40px;
+  margin-left: 100px;
+  width: 95%;
+  background: #f9fafb;
+  min-height: calc(100vh - 90px);
+  font-family: 'Pretendard', '맑은 고딕', sans-serif;
+}
+  
+  h1.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    text-align: center;
+    color: #1f2937;
+  }
+  
+  .section-box {
+    background: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+  
+  .section-box h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #1f2937;
+  }
+  
+  /* ============================== */
+  /* 테이블 스타일 */
+  /* ============================== */
+  .manage-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    background: #fff;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    margin-top: 1rem;
+  }
+  
+  .manage-table th,
+  .manage-table td {
+    padding: 0.875rem 1rem;
+    text-align: center;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .manage-table thead {
+    background-color: #f3f4f6;
+  }
+  
+  .manage-table tr:hover {
+    background-color: #f9fafb;
+  }
+  
+  .manage-table td span {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  
+  .status-badge {
+    background-color: #fef9c3;
+    color: #92400e;
+  }
+  
+  .status-badge.approved {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+  
+  .status-badge.pending {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+  
+  /* ============================== */
+  /* 버튼 스타일 */
+  /* ============================== */
+  button {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s ease-in-out;
+    cursor: pointer;
+    border: none;
+    margin: 0 4px;
+  }
+  
+  .btn-approve {
+    background-color: #2563eb;
+    color: white;
+  }
+  
+  .btn-refuse {
+    background-color: #e11d48;
+    color: white;
+  }
+  
+  .btn-manage {
+    background-color: #64748b;
+    color: white;
+  }
+  
+  .btn-delete {
+    background-color: #f87171;
+    color: white;
+  }
+  
+  button:hover {
+    opacity: 0.9;
+  }
+  
+  /* ============================== */
+  /* 필터 입력창 */
+  /* ============================== */
+  .filter-group-horizontal {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .filter-group-horizontal > div {
+    flex: 1;
+  }
+  
+  .filter-group-horizontal label {
+    display: block;
+    font-size: 0.875rem;
+    color: #374151;
+    margin-bottom: 0.5rem;
+  }
+  
+  .filter-group-horizontal input {
+    width: 100%;
+    padding: 0.625rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    background-color: #fff;
+  }
+  
+  /* ============================== */
+  /* 페이지네이션 */
+  /* ============================== */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+  }
+  
+  .pagination button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+  }
+  
+  .pagination button:hover {
+    background-color: #f3f4f6;
+  }
+  
+  .pagination button.active {
+    background-color: #2563eb;
+    color: white;
+    font-weight: 600;
+    border-color: #2563eb;
+  }
+  
+  /* ============================== */
+  /* 반응형 */
+  /* ============================== */
+  @media screen and (max-width: 768px) {
+    .main-content {
+      margin-left: 0;
+      width: 100%;
+      padding: 1.5rem;
+    }
+  
+    .filter-group {
+      grid-template-columns: 1fr;
+    }
+  
+    button {
+      width: 100%;
+      margin: 0.25rem 0;
+    }
+  }
+  
