@@ -1,0 +1,7 @@
+path: D:/battery
+train: datasets/train/images
+val: datasets/valid/images
+test: datasets/test/images
+
+nc: 1
+names: ['battery']
